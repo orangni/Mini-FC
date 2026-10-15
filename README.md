@@ -79,9 +79,11 @@ Progress stays in this browser's **LocalStorage**, using the existing `mini-fc-c
 
 ## Clubs, roster provenance, and local licensed assets
 
-The database contains **50 real clubs** from the user's supplied 2026/27 list: **20 Premier League, 9 Bundesliga, 20 Serie A, and PSG**. The user explicitly requested omitting the other nine Bundesliga clubs. Original Mini FC and Rival FC remain available. Kick Off includes searchable club selection and league filtering. Every club has a stable ID, name, league, home/away colours and pattern, shorts, socks, attack/midfield/defence/goalkeeper ratings and a preferred formation.
+The database contains **70 real clubs** from the user's supplied 2026/27 list: **20 Premier League, 9 Bundesliga, 20 Serie A, 20 La Liga, and PSG**. The user explicitly requested omitting the other nine Bundesliga clubs. Original Mini FC and Rival FC remain available. Kick Off includes searchable club selection and league filtering. Every club has a stable ID, name, league, home/away colours and pattern, shorts, socks, attack/midfield/defence/goalkeeper ratings and a preferred formation.
 
 Official league sites returned HTTP 403 in this environment. Membership is labelled **user-provided**, not independently verified. Coventry, Hull and Ipswich follow the user's English list; Frosinone, Venezia and Monza follow the supplied Italian list. These have not silently been replaced with a 2025/26 list. Sources to consult when access is available: [Premier League](https://www.premierleague.com/en/clubs), [Bundesliga](https://www.bundesliga.com/de/bundesliga/clubs), [Serie A](https://en.legaseriea.it/serie-a/teams).
+
+The requested Spanish roster includes Barcelona, Real Madrid, Atlético, Betis, Athletic, Sociedad, Sevilla, Villarreal, Espanyol, Valencia, Celta, Alavés, Rayo, Getafe, Osasuna, Levante, Elche, Racing Santander, Deportivo and Málaga. These follow the user's list rather than an independently verified membership list. All 20 have explicit home and away shirt/trim/shorts/socks definitions; Barcelona stripes, Rayo's sash and Elche's chest band use the existing procedural kit renderer. Korean aliases and accent-insensitive search are available for these clubs. New Spanish careers draw their five opponents from the same La Liga roster.
 
 Kits use **recognizable traditional colours and procedural patterns**. Exact 2026/27 kits, sponsors, crests and real-world ratings are **not verified or reproduced**. Ratings are gameplay estimates. Alternate-kit selection uses colour distance; an emergency neutral broadcast kit handles cases where both away choices would clash. No official graphics or scraped images are bundled.
 
@@ -112,7 +114,7 @@ npm run build
 npm run build:single
 ```
 
-The **35 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 50-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
+The **38 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
 
 Optional production-browser integration checks require Python Playwright only for testing:
 
@@ -124,11 +126,12 @@ npm run preview -- --port 4173
 # In a second terminal:
 python tests/browser_smoke.py
 python tests/browser_upgrade.py
+python tests/browser_laliga.py
 # After npm run build:single:
 python tests/browser_single.py
 ```
 
-Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The first script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, full seasons, next season and simultaneous touch movement/sprint. The upgrade script adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, off-ball career camera framing and persistent touch layout. Checks also run under `/Mini-FC/`.
+Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The first script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, full seasons, next season and simultaneous touch movement/sprint. The upgrade script adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, off-ball career camera framing and persistent touch layout. The La Liga script checks the 20 Spanish clubs, Korean search, actual rendered home/away patterns and shorts/socks, Spanish career opponents and refresh persistence. Checks also run under `/Mini-FC/`.
 
 Time and selected season scores are accelerated through the explicit `?test=1` harness. Goal detection and input actions still use the simulation. Some isolated input fixtures freeze AI to prevent an opponent stealing the ball during a touch-gesture assertion. No test global is exposed during normal play.
 

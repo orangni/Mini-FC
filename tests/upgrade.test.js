@@ -246,17 +246,17 @@ test("touch taps, holds and swipes produce normal, power, chip and finesse comma
   assert.equal(shotGesture(100, 0, -50).shotType, "chip");
   assert.equal(shotGesture(100, 60, 0).shotType, "finesse");
 });
-test("user-supplied club database contains all 50 requested clubs and no invented remaining nine", () => {
-  assert.equal(CLUB_DATABASE.length, 50);
-  assert.equal(new Set(CLUB_DATABASE.map((c) => c.id)).size, 50);
+test("user-supplied club database contains all 70 requested clubs and no invented remaining nine", () => {
+  assert.equal(CLUB_DATABASE.length, 70);
+  assert.equal(new Set(CLUB_DATABASE.map((c) => c.id)).size, 70);
   assert.deepEqual(
     Object.fromEntries(
-      ["PL", "BL", "SA", "FR"].map((l) => [
+      ["PL", "BL", "SA", "LL", "FR"].map((l) => [
         l,
         CLUB_DATABASE.filter((c) => c.league === l).length,
       ]),
     ),
-    { PL: 20, BL: 9, SA: 20, FR: 1 },
+    { PL: 20, BL: 9, SA: 20, LL: 20, FR: 1 },
   );
   assert.equal(getClub("coventry").league, "PL");
   assert.equal(getClub("hull").league, "PL");
@@ -285,7 +285,7 @@ test("automatic alternate kits avoid colour clashes, including identical-club ma
   );
 });
 test("new club careers retain five-match seasons and select opponents from the same league", () => {
-  for (const id of ["arsenal", "bayern", "inter"]) {
+  for (const id of ["arsenal", "bayern", "inter", "barcelona", "real-madrid"]) {
     const c = newCareer("A", "Striker", id);
     const league = getClub(id).league;
     assert.equal(c.table[0].name, getClub(id).name);
@@ -365,4 +365,78 @@ test("coincident players separate without NaNs and stay within pitch boards", ()
         Math.abs(p.z) <= 33.5,
     ),
   );
+});
+test("La Liga contains exactly the 20 Spanish clubs supplied by the user", () => {
+  const expected = [
+    "barcelona",
+    "real-madrid",
+    "atletico",
+    "betis",
+    "athletic",
+    "real-sociedad",
+    "sevilla",
+    "villarreal",
+    "espanyol",
+    "valencia",
+    "celta",
+    "alaves",
+    "rayo",
+    "getafe",
+    "osasuna",
+    "levante",
+    "elche",
+    "racing-santander",
+    "deportivo",
+    "malaga",
+  ];
+  assert.deepEqual(
+    CLUB_DATABASE.filter((c) => c.league === "LL")
+      .map((c) => c.id)
+      .sort(),
+    expected.sort(),
+  );
+  for (const id of expected) {
+    const c = getClub(id);
+    assert.equal(c.membershipSource, "user-provided");
+    assert.equal(c.kitVerified, false);
+    assert.notDeepEqual(c.home, c.away);
+    assert.ok(c.aliases.length > 0);
+  }
+  assert.equal(getClub("barcelona").home.pattern, "stripes");
+  assert.equal(getClub("rayo").home.pattern, "sash");
+  assert.equal(getClub("rayo").away.pattern, "sash");
+  assert.equal(getClub("elche").home.pattern, "hoop");
+  assert.equal(getClub("real-madrid").home.shirt, "#ffffff");
+});
+test("Spanish club search accepts Korean names, accents and league filtering", () => {
+  assert.equal(searchClubs("바르셀로나", "LL")[0].id, "barcelona");
+  assert.equal(searchClubs("레알 마드리드", "LL")[0].id, "real-madrid");
+  assert.equal(searchClubs("malaga", "LL")[0].id, "malaga");
+  assert.equal(searchClubs("Málaga", "LL")[0].id, "malaga");
+  assert.equal(searchClubs("deportivo la coruna", "LL")[0].id, "deportivo");
+  assert.equal(searchClubs("racing santander", "LL")[0].id, "racing-santander");
+  assert.equal(searchClubs("barcelona", "PL").length, 0);
+  assert.equal(searchClubs("", "LL").length, 20);
+});
+test("Spanish career club, opponents, XP and kits survive a save round trip", () => {
+  const c = newCareer("La Liga Captain", "Midfielder", "barcelona");
+  finishMatch(c, [2, 0], { goals: 1, assists: 1, rating: 8 });
+  const data = new Map(),
+    storage = {
+      getItem: (k) => data.get(k) ?? null,
+      setItem: (k, v) => data.set(k, v),
+    };
+  saveCareer(storage, c);
+  const restored = loadCareer(storage);
+  assert.deepEqual(restored, c);
+  assert.equal(restored.clubId, "barcelona");
+  assert.equal(restored.xp, 180);
+  assert.equal(restored.seasonMatch, 1);
+  assert.ok(
+    restored.table.every(
+      (row) =>
+        CLUB_DATABASE.find((club) => club.name === row.name)?.league === "LL",
+    ),
+  );
+  assert.equal(getClub(restored.clubId).away.pattern, "pinstripes");
 });
