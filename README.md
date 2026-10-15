@@ -91,6 +91,8 @@ Settings → Local Kit / Crest Assets (also in club selection) accepts your loca
 
 ## One HTML file
 
+The complete prebuilt game is checked into [`downloads/Mini-FC.html`](downloads/Mini-FC.html) for direct GitHub downloads. On GitHub, open that file and choose **Download raw file**. It includes all 70 clubs and needs no separate assets. To regenerate this downloadable copy after changing the game, run `npm run build:single -- downloads/Mini-FC.html`.
+
 ```powershell
 npm run build:single
 ```
