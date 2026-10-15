@@ -1494,3 +1494,352 @@ form > select {
   background: currentColor;
   border-radius: 1px;
 }
+/* 6v6 controls: movement and sprint on the left, contextual actions on the right. */
+button[hidden] {
+  display: none !important;
+}
+:root {
+  --control-size: 1;
+  --control-opacity: 0.85;
+  --control-inset: 24px;
+}
+#joystick-zone {
+  position: absolute;
+  left: max(var(--control-inset), env(safe-area-inset-left));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  width: min(42vw, 410px);
+  height: min(35vh, 250px);
+  pointer-events: auto;
+  touch-action: none;
+}
+#joystick-zone #joystick {
+  left: 0;
+  bottom: 0;
+  width: calc(150px * var(--control-size));
+  height: calc(150px * var(--control-size));
+  opacity: var(--control-opacity);
+  pointer-events: none;
+}
+#touch-controls > #sprint-button {
+  position: absolute;
+  left: max(calc(var(--control-inset) + 8px), env(safe-area-inset-left));
+  bottom: calc(max(20px, env(safe-area-inset-bottom)) + min(35vh, 250px) + 8px);
+  border-radius: 36px;
+  min-width: calc(88px * var(--control-size));
+  min-height: calc(52px * var(--control-size));
+  padding: 8px;
+  font-size: 10px;
+  background: #153a45d9;
+  opacity: var(--control-opacity);
+  pointer-events: auto;
+  touch-action: none;
+}
+#touch-controls .action-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, calc(72px * var(--control-size)));
+  grid-template-rows: repeat(2, calc(72px * var(--control-size)));
+  gap: calc(9px * var(--control-size));
+  right: max(var(--control-inset), env(safe-area-inset-right));
+  bottom: max(25px, env(safe-area-inset-bottom));
+  opacity: var(--control-opacity);
+}
+#touch-controls .action-buttons button {
+  grid-column: auto;
+  grid-row: auto;
+  width: calc(72px * var(--control-size));
+  height: calc(72px * var(--control-size));
+  min-height: 0;
+  border-radius: 50%;
+  font-size: calc(9px * var(--control-size));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  line-height: 1.5;
+  padding: 0;
+  background: #183741f0;
+  color: #fff;
+}
+#touch-controls .action-buttons small {
+  font-size: calc(6px * var(--control-size));
+  letter-spacing: 0;
+  opacity: 0.65;
+}
+#touch-controls .action-buttons #shoot-button {
+  grid-column: 3;
+  grid-row: 2;
+  background: #f6ca62;
+  color: #173b35;
+  width: calc(79px * var(--control-size));
+  height: calc(79px * var(--control-size));
+}
+#touch-controls .action-buttons #pass-button {
+  background: #e6eee2;
+  color: #1c3937;
+}
+#touch-controls .action-buttons #slide-button {
+  background: #ed8875;
+  color: #172d30;
+}
+#shot-power {
+  position: absolute;
+  left: 50%;
+  bottom: 100px;
+  transform: translateX(-50%);
+  width: 180px;
+  height: 6px;
+  background: #112e36ce;
+  opacity: 0;
+  border-radius: 5px;
+}
+#shot-power.charging {
+  opacity: 1;
+}
+#shot-power > span {
+  height: 100%;
+  display: block;
+  background: #f6ca62;
+  border-radius: 5px;
+}
+#shot-power small {
+  position: absolute;
+  bottom: 15px;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  text-align: center;
+  color: #f6e9cb;
+  text-shadow: 0 1px 5px #000;
+}
+.touch #shot-power {
+  bottom: 65px;
+}
+.scorebug #home-label {
+  color: var(--home-color, #f6ca62);
+}
+.scorebug #away-label {
+  color: var(--away-color, #fb9785);
+  text-shadow: 0 0 2px #fff5;
+}
+.club-selection {
+  width: min(1100px, 100%);
+  margin: auto;
+}
+.fixture-picker {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin: 22px 0;
+}
+.fixture-picker > button:not(.primary) {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 88px;
+  background: #132c37;
+}
+.fixture-picker .selected {
+  border-color: var(--gold);
+}
+.fixture-picker > button span small {
+  display: block;
+  font-size: 8px;
+  color: #b7c9c5;
+  margin-bottom: 7px;
+}
+.fixture-picker > button span b {
+  display: block;
+  font-size: 16px;
+  letter-spacing: 0;
+}
+.fixture-picker > b {
+  color: var(--gold);
+  font-size: 11px;
+}
+.fixture-picker .primary {
+  min-height: 88px;
+}
+.club-tools {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.club-tools input {
+  flex: 1;
+  min-width: 120px;
+}
+.club-tools select {
+  max-width: 220px;
+}
+.club-list {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-height: 47vh;
+  overflow: auto;
+  touch-action: pan-y;
+  padding: 3px;
+}
+.club-list > button {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  gap: 13px;
+  padding: 15px;
+  letter-spacing: 0;
+  font-size: 13px;
+  min-height: 73px;
+}
+.club-list small {
+  display: block;
+  font-size: 9px;
+  color: #afc3be;
+  margin-top: 6px;
+  font-weight: 400;
+}
+.mini-crest {
+  width: 40px;
+  height: 47px;
+  clip-path: polygon(0 0, 100% 0, 100% 70%, 50% 100%, 0 70%);
+  display: inline-grid;
+  place-content: center;
+  font-size: 12px;
+  font-weight: 900;
+  flex-shrink: 0;
+  text-shadow: 0 0 2px #0005;
+}
+.local-crest {
+  width: 42px;
+  height: 47px;
+  object-fit: contain;
+}
+.club-selection > .fine {
+  font-size: 10px;
+  margin: 16px 3px 0;
+}
+.control-preview {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 120px;
+  background: #2a654b;
+  border-radius: 8px;
+  padding: var(--control-inset);
+  margin: 20px 0;
+}
+.preview-stick {
+  width: calc(56px * var(--control-size));
+  height: calc(56px * var(--control-size));
+  border: 12px solid #fff3;
+  border-radius: 50%;
+  background: #fff6;
+  opacity: var(--control-opacity);
+}
+.control-preview > div {
+  display: flex;
+  gap: 10px;
+  opacity: var(--control-opacity);
+}
+.control-preview b {
+  width: calc(48px * var(--control-size));
+  height: calc(48px * var(--control-size));
+  display: grid;
+  place-content: center;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #143b32;
+  font-size: 8px;
+}
+.panel input[type="range"] {
+  padding: 0;
+  width: 100%;
+  accent-color: var(--gold);
+  min-height: 30px;
+}
+.panel output {
+  float: right;
+  color: var(--gold);
+}
+.panel input[type="file"] {
+  width: 100%;
+  font-size: 11px;
+}
+.panel > #asset-club {
+  width: 100%;
+}
+.career-center .stat-strip {
+  flex-wrap: wrap;
+}
+.career-center .stat-strip > div {
+  min-width: 25%;
+  margin-bottom: 8px;
+}
+@media (max-width: 760px) {
+  .club-list {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .fixture-picker {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .fixture-picker .primary {
+    width: 100%;
+    min-height: 45px;
+  }
+  .fixture-picker > button span b {
+    font-size: 12px;
+  }
+  .club-tools {
+    flex-wrap: wrap;
+  }
+  .club-tools input {
+    min-width: 50%;
+  }
+  .club-tools > button {
+    padding: 10px;
+  }
+  .club-list > button {
+    font-size: 10px;
+    padding: 10px;
+  }
+  .club-list small {
+    font-size: 8px;
+  }
+}
+@media (max-height: 500px) {
+  #touch-controls .action-buttons {
+    transform: scale(0.84);
+    transform-origin: bottom right;
+  }
+  #joystick-zone #joystick {
+    width: calc(124px * var(--control-size));
+    height: calc(124px * var(--control-size));
+  }
+  #touch-controls > #sprint-button {
+    bottom: calc(min(35vh, 250px) + 18px);
+    min-height: 42px;
+  }
+  .club-selection .page-heading .subtitle {
+    display: none;
+  }
+  .fixture-picker {
+    margin: 12px 0;
+  }
+  .fixture-picker > button:not(.primary),
+  .fixture-picker .primary {
+    min-height: 60px;
+  }
+  .club-list {
+    max-height: 36vh;
+  }
+  .club-tools {
+    margin-bottom: 8px;
+  }
+  .club-selection .page-heading {
+    margin-bottom: 8px;
+  }
+}

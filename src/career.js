@@ -1,3 +1,4 @@
+import { getClub, CLUB_DATABASE } from "./clubs.js";
 export const SAVE_KEY = "mini-fc-career-v1";
 export const CLUBS = [
   "Mini FC",
@@ -7,9 +8,13 @@ export const CLUBS = [
   "Metro Rovers",
   "Coast City",
 ];
-export function newCareer(name, position) {
+export function newCareer(name, position, clubId = "mini-fc") {
   return {
-    version: 1,
+    version: 2,
+    clubId: getClub(clubId).id,
+    assists: 0,
+    ratingTotal: 0,
+    lastRating: 6,
     name: name.trim().slice(0, 20) || "Captain",
     position: ["Striker", "Midfielder", "Defender"].includes(position)
       ? position
@@ -25,13 +30,27 @@ export function newCareer(name, position) {
     goals: 0,
     championships: 0,
     seasonMatch: 0,
-    table: freshTable(),
+    table: freshTable(clubId),
     history: [],
     lastReward: null,
   };
 }
-function freshTable() {
-  return CLUBS.map((name) => ({
+function freshTable(clubId = "mini-fc") {
+  const club = getClub(clubId);
+  const sameLeague = CLUB_DATABASE.filter(
+    (c) => c.league === club.league && c.id !== club.id,
+  );
+  const others = CLUB_DATABASE.filter(
+    (c) => c.id !== club.id && c.league !== club.league,
+  );
+  const names =
+    club.id === "mini-fc"
+      ? CLUBS
+      : [
+          club.name,
+          ...[...sameLeague, ...others].slice(0, 5).map((c) => c.name),
+        ];
+  return names.map((name) => ({
     name,
     played: 0,
     wins: 0,
@@ -92,11 +111,11 @@ export const FIXTURES = Array.from({ length: 5 }, (_, round) => {
   ];
 });
 export function opponent(career) {
-  return CLUBS[
+  return career.table[
     FIXTURES[career.seasonMatch]
       .find((pair) => pair.includes(0))
       .find((id) => id !== 0)
-  ];
+  ].name;
 }
 export function finishMatch(career, score, stats, random = Math.random) {
   if (career.seasonMatch >= 5)
@@ -109,6 +128,11 @@ export function finishMatch(career, score, stats, random = Math.random) {
   career.points += Math.floor(career.xp / 100) - before;
   career.played++;
   career.goals += stats.goals;
+  career.assists = (career.assists || 0) + (stats.assists || 0);
+  career.lastRating =
+    stats.rating ??
+    Math.min(10, 6 + stats.goals * 0.9 + (stats.assists || 0) * 0.65);
+  career.ratingTotal = (career.ratingTotal || 0) + career.lastRating;
   if (win) career.wins++;
   else if (home === away) career.draws++;
   else career.losses++;
@@ -127,7 +151,10 @@ export function finishMatch(career, score, stats, random = Math.random) {
   });
   career.seasonMatch++;
   let champion = false;
-  if (career.seasonMatch === 5 && standings(career)[0].name === CLUBS[0]) {
+  if (
+    career.seasonMatch === 5 &&
+    standings(career)[0].name === career.table[0].name
+  ) {
     champion = true;
     career.championships++;
     career.points += 3;
@@ -141,6 +168,8 @@ export function finishMatch(career, score, stats, random = Math.random) {
     season: career.season,
     score: `${home}–${away}`,
     goals: stats.goals,
+    assists: stats.assists || 0,
+    rating: career.lastRating,
   });
   career.history = career.history.slice(0, 10);
   return career.lastReward;
@@ -160,10 +189,17 @@ export function nextSeason(career) {
   if (career.seasonMatch !== 5) return false;
   career.season++;
   career.seasonMatch = 0;
-  career.table = freshTable();
+  career.table = freshTable(career.clubId);
   return true;
 }
 export function saveCareer(storage, career) {
+  const old = storage.getItem(SAVE_KEY);
+  if (old && !storage.getItem(SAVE_KEY + "-backup-v1")) {
+    try {
+      if (JSON.parse(old)?.version === 1)
+        storage.setItem(SAVE_KEY + "-backup-v1", old);
+    } catch {}
+  }
   storage.setItem(SAVE_KEY, JSON.stringify(career));
 }
 export function loadCareer(storage) {
@@ -171,7 +207,7 @@ export function loadCareer(storage) {
     const c = JSON.parse(storage.getItem(SAVE_KEY));
     if (
       !c ||
-      c.version !== 1 ||
+      ![1, 2].includes(c.version) ||
       typeof c.name !== "string" ||
       !["Striker", "Midfielder", "Defender"].includes(c.position)
     )
@@ -206,7 +242,9 @@ export function loadCareer(storage) {
       c.table.length !== 6 ||
       !c.table.every(
         (r, i) =>
-          r.name === CLUBS[i] &&
+          typeof r.name === "string" &&
+          r.name.length > 0 &&
+          r.name.length <= 80 &&
           ["played", "wins", "draws", "losses", "gf", "ga", "points"].every(
             (k) => Number.isSafeInteger(r[k]) && r[k] >= 0,
           ),
@@ -214,6 +252,25 @@ export function loadCareer(storage) {
     )
       return null;
     if (!Array.isArray(c.history)) return null;
+    if (c.version === 1) {
+      c.version = 2;
+      c.clubId = "mini-fc";
+      c.assists = 0;
+      c.ratingTotal = c.played * 6;
+      c.lastRating = 6;
+    }
+    if (
+      typeof c.clubId !== "string" ||
+      !Number.isSafeInteger(c.assists) ||
+      c.assists < 0 ||
+      !Number.isFinite(c.ratingTotal) ||
+      c.ratingTotal < 0 ||
+      !Number.isFinite(c.lastRating) ||
+      c.lastRating < 0 ||
+      c.lastRating > 10
+    )
+      return null;
+    if (new Set(c.table.map((r) => r.name)).size !== 6) return null;
     return c;
   } catch {
     return null;

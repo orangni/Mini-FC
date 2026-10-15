@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { selectKits, getClub, colourDistance } from "./clubs.js";
 
 export class Renderer {
   constructor(canvas, quality = "high") {
@@ -19,9 +20,13 @@ export class Renderer {
     sun.position.set(-30, 60, 25);
     this.scene.add(sun);
     this.materials = new Map();
+    this.geometryCache = new Map();
+    this.kitMaterials = new Map();
+    this.localAssets = new Map();
+    this.kitVersion = 0;
     this.pitch();
     this.stadium();
-    this.models = Array.from({ length: 6 }, (_, i) => this.footballer(i));
+    this.models = Array.from({ length: 12 }, (_, i) => this.footballer(i));
     this.ball = new THREE.Group();
     this.ball.add(
       new THREE.Mesh(
@@ -87,11 +92,104 @@ export class Renderer {
       );
     return this.materials.get(color);
   }
+  boxGeometry(w, h, d) {
+    const key = `${w}:${h}:${d}`;
+    if (!this.geometryCache.has(key))
+      this.geometryCache.set(key, new THREE.BoxGeometry(w, h, d));
+    return this.geometryCache.get(key);
+  }
+  kitMaterial(kit, clubId) {
+    const local = this.localAssets.get(clubId)?.kit;
+    const key = JSON.stringify(kit) + (local || "");
+    if (this.kitMaterials.has(key)) return this.kitMaterials.get(key);
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = 64;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = kit.shirt;
+    ctx.fillRect(0, 0, 64, 64);
+    ctx.fillStyle = kit.secondary;
+    if (kit.pattern === "stripes" || kit.pattern === "pinstripes")
+      for (let x = 0; x < 64; x += 16)
+        ctx.fillRect(x, 0, kit.pattern === "stripes" ? 8 : 2, 64);
+    if (kit.pattern === "centre") ctx.fillRect(27, 0, 10, 64);
+    if (kit.pattern === "hoop") ctx.fillRect(0, 26, 64, 13);
+    if (kit.pattern === "sleeves") {
+      ctx.fillRect(0, 0, 10, 64);
+      ctx.fillRect(54, 0, 10, 64);
+    }
+    if (kit.pattern === "sash") {
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(14, 0);
+      ctx.lineTo(64, 50);
+      ctx.lineTo(64, 64);
+      ctx.closePath();
+      ctx.fill();
+    }
+    const map = new THREE.CanvasTexture(canvas);
+    map.colorSpace = THREE.SRGBColorSpace;
+    const material = new THREE.MeshLambertMaterial({ map, flatShading: true });
+    if (local)
+      new THREE.TextureLoader().load(local, (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace;
+        material.map = texture;
+        material.needsUpdate = true;
+        map.dispose();
+      });
+    this.kitMaterials.set(key, material);
+    return material;
+  }
+  setLocalAsset(clubId, kind, dataURL) {
+    const assets = this.localAssets.get(clubId) || {};
+    assets[kind] = dataURL;
+    this.localAssets.set(clubId, assets);
+    this.kitVersion++;
+  }
+  applyTeams(match) {
+    const clubs = match.teams || [getClub("mini-fc"), getClub("rival-fc")];
+    const key = clubs.map((c) => c.id).join(":") + this.kitVersion;
+    if (this.currentKits === key) return;
+    this.currentKits = key;
+    const selected = selectKits(...clubs);
+    this.selectedKits = selected;
+    for (const p of match.players) {
+      const m = this.models[p.id],
+        club = clubs[p.team];
+      let kit = p.team ? selected.away : selected.home;
+      if (p.role === "goalkeeper") {
+        const colours = ["#39d7bd", "#a17bf2", "#ff912e"];
+        const shirt = colours.sort(
+          (a, b) =>
+            Math.min(
+              colourDistance(b, selected.home.shirt),
+              colourDistance(b, selected.away.shirt),
+            ) -
+            Math.min(
+              colourDistance(a, selected.home.shirt),
+              colourDistance(a, selected.away.shirt),
+            ),
+        )[p.team];
+        kit = {
+          shirt,
+          secondary: "#162632",
+          shorts: shirt,
+          socks: shirt,
+          pattern: "solid",
+        };
+      }
+      // Emergency broadcast kits must remain readable even if a local exact kit exists.
+      const textureClub =
+        p.role === "goalkeeper" || (p.team === 1 && selected.emergency)
+          ? ""
+          : club.id;
+      m.jersey.material = this.kitMaterial(kit, textureClub);
+      m.shorts.material = this.mat(kit.shorts);
+      m.trim.material = this.mat(kit.secondary);
+      m.socks.forEach((mesh) => (mesh.material = this.mat(kit.socks)));
+    }
+  }
   box(x, y, z, w, h, d, color, parent = this.scene) {
-    const mesh = new THREE.Mesh(
-      new THREE.BoxGeometry(w, h, d),
-      this.mat(color),
-    );
+    const mesh = new THREE.Mesh(this.boxGeometry(w, h, d), this.mat(color));
     mesh.position.set(x, y, z);
     parent.add(mesh);
     return mesh;
@@ -297,8 +395,17 @@ export class Renderer {
     root.add(body);
     const jersey = id < 3 ? 0xf5c553 : 0xec6b60,
       skin = [0xc89068, 0x855838, 0xe3b28a][id % 3];
-    this.box(0, 1.35, 0, 0.82, 0.85, 0.48, jersey, body);
-    this.box(0, 0.88, 0, 0.74, 0.25, 0.45, id < 3 ? 0x173b35 : 0x263b55, body);
+    const jerseyMesh = this.box(0, 1.35, 0, 0.82, 0.85, 0.48, jersey, body);
+    const shorts = this.box(
+      0,
+      0.88,
+      0,
+      0.74,
+      0.25,
+      0.45,
+      id < 3 ? 0x173b35 : 0x263b55,
+      body,
+    );
     const head = new THREE.Mesh(
       new THREE.IcosahedronGeometry(0.37, 1),
       this.mat(skin),
@@ -306,7 +413,7 @@ export class Renderer {
     head.position.y = 2.02;
     body.add(head);
     this.box(0, 2.27, 0.02, 0.5, 0.17, 0.48, 0x252222, body);
-    this.box(
+    const trim = this.box(
       0,
       1.49,
       0.252,
@@ -318,13 +425,14 @@ export class Renderer {
     );
     this.box(0, 2.02, 0.35, 0.12, 0.12, 0.13, skin, body);
     const legs = [],
-      arms = [];
+      arms = [],
+      socks = [];
     for (const side of [-1, 1]) {
       const leg = new THREE.Group();
       leg.position.set(side * 0.22, 0.85, 0);
       body.add(leg);
       this.box(0, -0.27, 0, 0.23, 0.55, 0.23, skin, leg);
-      this.box(0, -0.54, 0, 0.24, 0.23, 0.25, 0xe4e8d8, leg);
+      socks.push(this.box(0, -0.54, 0, 0.24, 0.23, 0.25, 0xe4e8d8, leg));
       this.box(0, -0.71, 0.09, 0.27, 0.14, 0.43, 0x15212b, leg);
       legs.push(leg);
       const arm = new THREE.Group();
@@ -345,7 +453,17 @@ export class Renderer {
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.y = 0.06;
     root.add(shadow);
-    return { root, body, legs, arms, phase: id };
+    return {
+      root,
+      body,
+      legs,
+      arms,
+      jersey: jerseyMesh,
+      shorts,
+      trim,
+      socks,
+      phase: id,
+    };
   }
   resize() {
     const width = window.innerWidth,
@@ -362,6 +480,7 @@ export class Renderer {
     this.resize();
   }
   draw(match, dt, menu) {
+    this.applyTeams(match);
     match.players.forEach((p, i) => {
       const m = this.models[i];
       m.root.position.set(p.x, 0, p.z);
@@ -373,6 +492,32 @@ export class Renderer {
       m.arms[0].rotation.x = -swing * 0.7;
       m.arms[1].rotation.x = swing * 0.7;
       m.body.position.y = p.moving > 0 ? Math.abs(Math.sin(m.phase)) * 0.08 : 0;
+      m.body.rotation.z = 0;
+      m.body.rotation.x = 0;
+      const action = Math.sin(Math.min(1, p.actionTime / 0.5) * Math.PI);
+      if (p.action === "shot" || p.action === "pass") {
+        m.legs[1].rotation.x = -action * 1.5;
+        m.arms[0].rotation.z = -0.5;
+      } else m.arms[0].rotation.z = 0;
+      if (p.action === "tackle") m.legs[1].rotation.x = -0.9;
+      if (p.action === "slide") {
+        m.body.position.y = -0.45;
+        m.body.rotation.x = 0.8;
+        m.legs[1].rotation.x = -1.2;
+      }
+      if (p.action === "dive") {
+        m.body.rotation.z = p.diveSide * 1.15;
+        m.body.position.y = -0.35;
+        m.arms[0].rotation.x = m.arms[1].rotation.x = -1.4;
+      }
+      if (p.action === "catch")
+        m.arms[0].rotation.x = m.arms[1].rotation.x = -1.1;
+      if (p.action === "feint")
+        m.body.rotation.z = Math.sin(p.actionTime * 15) * 0.35;
+      if (p.shield) {
+        m.arms[0].rotation.z = -0.7;
+        m.arms[1].rotation.z = 0.7;
+      } else m.arms[1].rotation.z = 0;
     });
     const b = match.ball;
     this.ball.position.set(b.x, b.y, b.z);
@@ -388,16 +533,21 @@ export class Renderer {
       p.z,
     );
     this.ring.position.set(p.x, 0.085, p.z);
-    const focusX = menu ? 2 : b.x * 0.35,
-      focusZ = menu ? 0 : b.z * 0.63,
+    const separation = !menu && match.career ? Math.abs(b.z - p.z) : 0;
+    const focusX = menu
+        ? 2
+        : match.career
+          ? b.x * 0.3 + p.x * 0.25
+          : b.x * 0.35,
+      focusZ = menu ? 0 : match.career ? b.z * 0.45 + p.z * 0.35 : b.z * 0.63,
       lerp = 1 - Math.exp(-dt * 3.5);
     this.look.lerp(new THREE.Vector3(focusX, 0, focusZ), lerp);
     const portrait = this.camera.aspect < 1;
     this.camera.position.lerp(
       new THREE.Vector3(
         this.look.x * 0.5 + (menu ? 21 : 0),
-        portrait ? 85 : 57,
-        this.look.z + (portrait ? 62 : 44),
+        portrait ? 85 : 57 + Math.min(20, separation * 0.4),
+        this.look.z + (portrait ? 62 : 44 + Math.min(12, separation * 0.2)),
       ),
       lerp,
     );

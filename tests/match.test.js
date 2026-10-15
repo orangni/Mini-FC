@@ -13,6 +13,10 @@ function clearShot(team = 0) {
     p.z = 0;
     p.cooldown = 10;
   });
+  for (const id of [6, 7]) {
+    m.players[id].x = 20;
+    m.players[id].z = 25;
+  }
   const p = m.players[team === 0 ? 0 : 3];
   p.x = 0;
   p.z = team === 0 ? -24 : 24;
@@ -22,10 +26,10 @@ function clearShot(team = 0) {
   m.controlled = 0;
   return m;
 }
-test("six players, two teams, kickoff possession, and two-minute clock", () => {
+test("twelve players, two teams, kickoff possession, and two-minute clock", () => {
   const m = new Match();
-  assert.equal(m.players.length, 6);
-  assert.equal(m.players.filter((p) => p.team === 0).length, 3);
+  assert.equal(m.players.length, 12);
+  assert.equal(m.players.filter((p) => p.team === 0).length, 6);
   assert.equal(m.ball.owner, 0);
   tick(m, 1);
   assert.equal(m.elapsed, 0);

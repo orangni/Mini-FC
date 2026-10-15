@@ -32,6 +32,7 @@ with sync_playwright() as p:
     expect(page.locator('#play')).to_be_visible()
     page.screenshot(path=str(ARTIFACTS / 'main.png'))
     page.click('#play')
+    page.click('#kickoff')
     page.wait_for_function('__miniFC.mode === "playing"')
     page.evaluate('__miniFC.match.kickoffWait=0')
     start = page.evaluate('__miniFC.match.players[0].x')
@@ -98,6 +99,7 @@ with sync_playwright() as p:
     assert page.evaluate('__miniFC.career.table.every(r=>r.played===0)')
     page.click('#back')
     page.click('#play')
+    page.click('#kickoff')
     page.evaluate('window.dispatchEvent(new Event("blur"))')
     page.wait_for_function('__miniFC.mode === "pause"')
     assert not errors, errors
@@ -111,6 +113,7 @@ with sync_playwright() as p:
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
     page.goto(URL + '?test=1')
     page.click('#play')
+    page.click('#kickoff')
     expect(page.locator('#joystick')).to_be_visible()
     page.evaluate('__miniFC.match.kickoffWait=0')
     page.screenshot(path=str(ARTIFACTS / 'tablet.png'))

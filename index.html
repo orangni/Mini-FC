@@ -35,15 +35,33 @@
         <i>·</i> ESC PAUSE
       </div>
       <div id="touch-controls">
-        <div id="joystick" aria-label="Movement joystick">
-          <div class="stick-rim"></div>
-          <div id="stick"></div>
+        <div id="joystick-zone">
+          <div id="joystick" aria-label="Floating movement joystick">
+            <div class="stick-rim"></div>
+            <div id="stick"></div>
+          </div>
         </div>
+        <button id="sprint-button">SPRINT</button>
         <div class="action-buttons">
-          <button id="sprint-button">SPRINT</button
-          ><button id="pass-button">PASS</button
-          ><button id="shoot-button">SHOOT</button>
+          <button id="pass-button" data-phase="attack">
+            PASS<small>HOLD: LOB</small>
+          </button>
+          <button id="through-button" data-phase="attack">THROUGH</button>
+          <button id="shoot-button" data-phase="attack">
+            SHOOT<small>HOLD: POWER</small>
+          </button>
+          <button id="chip-button" data-phase="attack">CHIP</button>
+          <button id="skill-button" data-phase="attack">
+            SKILL<small>HOLD: SHIELD</small>
+          </button>
+          <button id="tackle-button" data-phase="defend">TACKLE</button>
+          <button id="slide-button" data-phase="defend">SLIDE</button>
+          <button id="press-button" data-phase="defend">PRESS</button>
+          <button id="switch-button" data-phase="defend">SWITCH</button>
         </div>
+      </div>
+      <div id="shot-power">
+        <span></span><small>SHOT POWER · SWIPE ↑ CHIP / SIDEWAYS FINESSE</small>
       </div>
       <div id="stamina"><span></span></div>
     </div>
