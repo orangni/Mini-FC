@@ -28,6 +28,7 @@ function clearMatch(options = {}) {
     p.x = i % 2 ? 20 : -20;
     p.z = 15;
     p.cooldown = 5;
+    p.protected = 0;
   });
   Object.assign(m.players[0], { x: 0, z: -16, dx: 0, dz: -1, cooldown: 0 });
   Object.assign(m.ball, { owner: 0, x: 0, z: -17 });

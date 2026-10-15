@@ -12,6 +12,7 @@ function clearShot(team = 0) {
     p.x = i % 2 ? 17 : -17;
     p.z = 0;
     p.cooldown = 10;
+    p.protected = 0;
   });
   for (const id of [6, 7]) {
     m.players[id].x = 20;

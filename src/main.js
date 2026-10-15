@@ -522,6 +522,7 @@ function startMatch(isCareer) {
 }
 function pause(force = false) {
   if (mode === "playing") {
+    match.queuedAction = null;
     input.reset();
     showPause();
   } else if (mode === "pause" && !force) resume();

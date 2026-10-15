@@ -63,6 +63,7 @@ export class Match {
         moving: 0,
         cooldown: 0,
         stamina: 1,
+        sprintExhausted: false,
         action: "",
         actionTime: 0,
         skillCooldown: 0,
@@ -115,6 +116,8 @@ export class Match {
       interceptions: 0,
       saves: [0, 0],
     };
+    this.queuedAction = null;
+    this.manualSwitchTime = 0;
     this.kickoff(0);
   }
   kickoff(team) {
@@ -140,6 +143,12 @@ export class Match {
     const p = this.players[TEAM_IDS[team][0]];
     p.x = 0;
     p.z = team ? -1 : 1;
+    p.protected = 1.1;
+    // Leave room to choose a direction at every restart.
+    for (const q of this.players)
+      if (q.team !== team && Math.abs(q.z) < 6) q.z = q.team ? -6 : 6;
+    this.queuedAction = null;
+    this.manualSwitchTime = 0;
     Object.assign(this.ball, {
       x: 0,
       z: 0,
@@ -189,6 +198,7 @@ export class Match {
     const target = this.nearest(0, this.ball, this.controlled);
     if (!target) return false;
     this.controlled = target.id;
+    this.manualSwitchTime = 1.5;
     this.events.push({ type: "switch" });
     return true;
   }
@@ -229,6 +239,9 @@ export class Match {
     );
     const score = (q) =>
       distance(p, q) -
+      (p.role === "goalkeeper"
+        ? Math.min(distance(this.nearest(1 - p.team, q), q), 10) * 2
+        : 0) -
       (q.z - p.z) * dir * (type === "through" ? 1.2 : 0.35) -
       (this.nearest(1 - p.team, q)
         ? Math.min(distance(this.nearest(1 - p.team, q), q), 8) * 0.3
@@ -361,7 +374,8 @@ export class Match {
       p.tackleCooldown > 0 ||
       p.stunned > 0 ||
       p.role === "goalkeeper" ||
-      owner?.team === p.team
+      owner?.team === p.team ||
+      owner?.role === "goalkeeper"
     )
       return false;
     if (!automatic) {
@@ -382,10 +396,12 @@ export class Match {
       owner?.cooldown > 0
     )
       return false;
+    // A missed contact attempt must not become 60 new dice rolls per second.
+    if (automatic) p.tackleCooldown = 0.85;
     const facing = unit(target.x - p.x, target.z - p.z),
       dot = facing.x * p.dx + facing.z * p.dz;
     const chance = clamp(
-      (slide ? 0.87 : 0.93) -
+      (slide ? 0.87 : automatic ? 0.62 : 0.93) -
         (owner?.shield ? 0.48 : 0) -
         (dot < -0.2 ? 0.3 : 0),
       0.12,
@@ -400,6 +416,7 @@ export class Match {
       owner.protected = 0;
     }
     p.cooldown = 0.6;
+    p.protected = 0.75;
     p.tackleCooldown = slide ? 2.2 : 0.6;
     if (slide) {
       this.release(p, facing.x * 10, facing.z * 10, 1.8);
@@ -432,8 +449,10 @@ export class Match {
       p.stamina = Math.min(1, p.stamina + dt * 0.18);
       return;
     }
+    if (p.stamina <= 0.06) p.sprintExhausted = true;
+    else if (p.stamina >= 0.24) p.sprintExhausted = false;
     const d = unit(x, z),
-      running = sprint && p.stamina > 0.06;
+      running = sprint && !p.sprintExhausted;
     p.stamina = clamp(p.stamina + dt * (running ? -0.23 : 0.13), 0, 1);
     let speed =
       (6.5 + this.attributesFor(p).pace * 0.035) *
@@ -491,7 +510,7 @@ export class Match {
   }
   trySaves() {
     const b = this.ball;
-    if (b.owner !== null) return false;
+    if (b.owner !== null || Math.abs(b.z) >= FIELD.halfLength) return false;
     for (const p of this.players)
       if (p.role === "goalkeeper" && p.saveCooldown <= 0) {
         const dir = dirFor(p.team),
@@ -517,6 +536,7 @@ export class Match {
         if (catchBall) p.protected = 1.2;
         if (catchBall) {
           b.owner = p.id;
+          b.y = 1.6;
           b.userShot = false;
           p.holdTime = 0;
           b.vx = b.vz = b.vy = 0;
@@ -545,7 +565,7 @@ export class Match {
     if (owner?.id === p.id) {
       const goalDistance = Math.abs(dir * 35 - p.z),
         threat = this.nearest(1 - p.team, p);
-      if (p.cooldown <= 0 && goalDistance < 21 && Math.abs(p.x) < 16)
+      if (p.cooldown <= 0 && goalDistance < 18 && Math.abs(p.x) < 12)
         this.shoot(p.id, false, {
           type: this.random() < 0.15 ? "finesse" : "normal",
         });
@@ -641,14 +661,54 @@ export class Match {
     p.action = "touch";
     p.actionTime = 0.25;
     p.cooldown = 0.2 + (100 - control) * 0.002;
+    p.protected = Math.max(p.protected, this.isUser(p) ? 0.8 : 0.55);
     b.owner = p.id;
     b.userShot = false;
     this.pendingPass = null;
     if (p.team === 0 && !this.career) this.controlled = p.id;
   }
+  // Allow an early tap just before receiving a pass, without repeating it on later players.
+  queueAction(input, dt) {
+    if (this.queuedAction && (this.queuedAction.time -= dt) <= 0)
+      this.queuedAction = null;
+    const action = ["shoot", "chip", "finesse", "through", "lob", "pass", "skill"]
+      .find((key) => input[key]);
+    if (action && !this.demo)
+      this.queuedAction = {
+        action, id: this.controlled, input: { ...input }, time: 0.35,
+      };
+  }
+  tryQueuedAction() {
+    const command = this.queuedAction;
+    if (!command) return;
+    const { action, id, input } = command;
+    let success = false;
+    if (action === "pass" && this.career && this.ball.owner !== null) {
+      const owner = this.players[this.ball.owner];
+      if (
+        owner.team === 0 && owner.id !== 0 && owner.cooldown <= 0 &&
+        (owner.role !== "goalkeeper" || owner.holdTime >= 0.85)
+      )
+        success = this.pass(owner.id, "short", 0);
+    }
+    if (!success && this.ball.owner === id) {
+      if (["pass", "through", "lob"].includes(action))
+        success = this.pass(id, action === "pass" ? "short" : action);
+      else if (action === "skill") success = this.skill(id, input.x);
+      else
+        success = this.shoot(id, true, {
+          type: action === "shoot" ? input.shotType || "normal" : action,
+          power: input.power,
+          aimX: input.aimX,
+        });
+    }
+    if (success) this.queuedAction = null;
+  }
   step(dt, input = {}) {
     if (this.finished) return;
     dt = Math.min(dt, 0.05);
+    this.queueAction(input, dt);
+    this.manualSwitchTime = Math.max(0, this.manualSwitchTime - dt);
     if (this.kickoffWait > 0) {
       this.kickoffWait -= dt;
       return;
@@ -692,28 +752,7 @@ export class Match {
     }
     if (!this.demo) {
       if (input.switch) this.switchPlayer();
-      if (input.pass) {
-        const owner = b.owner === null ? null : this.players[b.owner];
-        if (
-          this.career &&
-          owner?.team === 0 &&
-          owner.id !== 0 &&
-          owner.cooldown <= 0
-        )
-          this.pass(owner.id, "short", 0);
-        else this.pass(this.controlled, "short");
-      }
-      if (input.through) this.pass(this.controlled, "through");
-      if (input.lob) this.pass(this.controlled, "lob");
-      if (input.shoot)
-        this.shoot(this.controlled, true, {
-          type: input.shotType || "normal",
-          power: input.power,
-          aimX: input.aimX,
-        });
-      if (input.chip) this.shoot(this.controlled, true, { type: "chip" });
-      if (input.finesse) this.shoot(this.controlled, true, { type: "finesse" });
-      if (input.skill) this.skill(this.controlled, input.x);
+      this.tryQueuedAction();
       if (input.tackle) this.tackle(this.controlled);
       if (input.slide) this.tackle(this.controlled, true);
     }
@@ -730,10 +769,14 @@ export class Match {
                   ? unit(p.x - q.x, p.z - q.z)
                   : unit(i % 2 ? 1 : -1, j % 2 ? 1 : -1),
               push = (1.2 - dist) * 0.5;
-            p.x = clamp(p.x + d.x * push, -22, 22);
-            p.z = clamp(p.z + d.z * push, -33.5, 33.5);
-            q.x = clamp(q.x - d.x * push, -22, 22);
-            q.z = clamp(q.z - d.z * push, -33.5, 33.5);
+            const heldP = p.role === "goalkeeper" && b.owner === p.id,
+              heldQ = q.role === "goalkeeper" && b.owner === q.id;
+            const pushP = heldP ? 0 : heldQ ? push * 2 : push,
+              pushQ = heldQ ? 0 : heldP ? push * 2 : push;
+            p.x = clamp(p.x + d.x * pushP, -22, 22);
+            p.z = clamp(p.z + d.z * pushP, -33.5, 33.5);
+            q.x = clamp(q.x - d.x * pushQ, -22, 22);
+            q.z = clamp(q.z - d.z * pushQ, -33.5, 33.5);
           }
         }
     if (b.owner !== null) {
@@ -756,7 +799,7 @@ export class Match {
           : 0.85 + (100 - this.attributesFor(p).passing) * 0.0025;
         b.x = p.x + p.dx * offset;
         b.z = p.z + p.dz * offset;
-        b.y = p.role === "goalkeeper" ? 1.3 : 0.35;
+        b.y = p.role === "goalkeeper" ? 1.6 : 0.35;
         b.vx = b.vz = b.vy = b.curve = 0;
         b.lastTeam = p.team;
         b.lastPlayer = p.id;
@@ -822,8 +865,10 @@ export class Match {
         if (pickup) this.acquire(pickup);
       }
     }
+    if (!this.demo) this.tryQueuedAction();
     if (this.career) this.controlled = 0;
     else if (
+      this.manualSwitchTime <= 0 &&
       b.owner !== null &&
       this.players[b.owner].team === 1 &&
       distance(this.players[this.controlled], b) > 9

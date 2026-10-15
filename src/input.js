@@ -78,6 +78,7 @@ export class Input {
         return;
       e.preventDefault();
       this.pointer = e.pointerId;
+      this.stickOrigin = { x: e.clientX, z: e.clientY };
       const rect = this.zone.getBoundingClientRect(),
         r = this.joystick.offsetWidth / 2;
       if (this.zone !== this.joystick) {
@@ -118,7 +119,10 @@ export class Input {
       const button = document.getElementById(id);
       if (!button) continue;
       button.addEventListener("pointerdown", (e) => {
-        if (!this.active) return;
+        if (
+          !this.active ||
+          [...this.buttonHolds.values()].some((h) => h.action === action)
+        ) return;
         e.preventDefault();
         button.setPointerCapture(e.pointerId);
         button.classList.add("pressed");
@@ -146,18 +150,24 @@ export class Input {
       const end = (e, cancel = false) => {
         const hold = this.buttonHolds.get(e.pointerId);
         this.buttonHolds.delete(e.pointerId);
-        button.classList.remove("pressed");
+        if (![...this.buttonHolds.values()].some((h) => h.action === action))
+          button.classList.remove("pressed");
         if (action === "sprint") {
           this.sprintPointers.delete(e.pointerId);
           this.sprint = this.sprintPointers.size > 0;
         }
-        if (action === "press") this.press = false;
-        if (action === "skill") this.shield = false;
-        if (!hold) return;
+        this.press = [...this.buttonHolds.values()].some(
+          (h) => h.action === "press",
+        );
+        this.shield = [...this.buttonHolds.values()].some(
+          (h) => h.action === "skill",
+        );
+        if (!hold || hold.action !== action) return;
         const elapsed = performance.now() - hold.at;
         if (action === "shoot") {
-          if (cancel) this.shooting = null;
-          else this.endShot(e.pointerId, e.clientX, e.clientY);
+          if (cancel) {
+            if (this.shooting?.id === e.pointerId) this.shooting = null;
+          } else this.endShot(e.pointerId, e.clientX, e.clientY);
         }
         if (!cancel && this.active && action === "pass")
           this.actions[elapsed > 350 ? "lob" : "pass"] = true;
@@ -191,6 +201,11 @@ export class Input {
       : 0;
   }
   setContext(attacking, career) {
+    // Keep captured buttons visible and in place until the finger releases.
+    if (
+      this.shooting ||
+      [...this.buttonHolds.values()].some((h) => h.action !== "sprint")
+    ) return;
     if (this.context === `${attacking}:${career}`) return;
     this.context = `${attacking}:${career}`;
     document.querySelectorAll("[data-phase]").forEach((button) => {
@@ -198,19 +213,26 @@ export class Input {
         button.dataset.phase !== (attacking ? "attack" : "defend") ||
         (button.id === "switch-button" && career);
     });
-    if (!attacking) this.shooting = null;
   }
   updateStick(e) {
     const r = this.joystick.getBoundingClientRect(),
       radius = r.width * 0.32;
-    let x = e.clientX - r.left - r.width / 2,
-      z = e.clientY - r.top - r.height / 2;
+    let x = e.clientX - this.stickOrigin.x,
+      z = e.clientY - this.stickOrigin.z;
     const d = Math.hypot(x, z);
     if (d > radius) {
       x *= radius / d;
       z *= radius / d;
     }
-    this.axes = { x: x / radius, z: z / radius };
+    // Ignore small thumb tremors, then smoothly remap the remaining travel.
+    const magnitude = Math.hypot(x, z) / radius;
+    const strength = Math.max(0, (magnitude - 0.1) / 0.9);
+    this.axes = magnitude > 0
+      ? {
+          x: (x / radius) * (strength / magnitude),
+          z: (z / radius) * (strength / magnitude),
+        }
+      : { x: 0, z: 0 };
     this.stick.style.transform = `translate(${x}px, ${z}px)`;
   }
   read() {
