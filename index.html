@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#101b26" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="description"
+      content="Small pitch. Big moments. A free 3D arcade football game with a saved player career."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <title>Mini FC — Small pitch. Big moments.</title>
+  </head>
+  <body>
+    <canvas id="game" aria-label="Mini FC football pitch"></canvas>
+    <div id="hud" hidden>
+      <div class="scorebug">
+        <span class="live-dot"></span><span id="home-label">MIN</span
+        ><b id="score">0 : 0</b><span id="away-label">RIV</span
+        ><span id="timer">02:00</span>
+      </div>
+      <button id="pause" class="icon-button" aria-label="Pause match">
+        <span></span><span></span>
+      </button>
+      <div id="match-hint">
+        <span>ATTACK ↑</span><span id="player-label">7 · CAPTAIN</span>
+      </div>
+      <div id="announcement" role="status"></div>
+      <div id="desktop-help">
+        WASD MOVE <i>·</i> SHIFT SPRINT <i>·</i> SPACE PASS <i>·</i> J SHOOT
+        <i>·</i> ESC PAUSE
+      </div>
+      <div id="touch-controls">
+        <div id="joystick" aria-label="Movement joystick">
+          <div class="stick-rim"></div>
+          <div id="stick"></div>
+        </div>
+        <div class="action-buttons">
+          <button id="sprint-button">SPRINT</button
+          ><button id="pass-button">PASS</button
+          ><button id="shoot-button">SHOOT</button>
+        </div>
+      </div>
+      <div id="stamina"><span></span></div>
+    </div>
+    <main id="screen"></main>
+    <div id="toast" role="status"></div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
