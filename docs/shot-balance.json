@@ -1,0 +1,136 @@
+{
+  "method": "60 isolated shots per row: x=-5/0/5, Shooting=60, Normal AI keeper=70, 20 seeds 137+i*7919 per location. Other outfield players cannot interfere. Stop at first goal/save. Box: shooter z=-22 and keeper z=-32.7; one-on-one: shooter z=-18 and keeper z=-28. Max-power attempts use 100% charge; other types do not. Not a human win-rate measurement.",
+  "before_commit": "fabdace537474a2491420dfa31c3286816354bf7",
+  "before": [
+    {
+      "scenario": "box",
+      "type": "normal",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "finesse",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "chip",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "power",
+      "attempts": 60,
+      "goals": 12,
+      "saves": 48,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "normal",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "finesse",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "chip",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "power",
+      "attempts": 60,
+      "goals": 10,
+      "saves": 50,
+      "misses": 0
+    }
+  ],
+  "after": [
+    {
+      "scenario": "box",
+      "type": "normal",
+      "attempts": 60,
+      "goals": 18,
+      "saves": 42,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "finesse",
+      "attempts": 60,
+      "goals": 20,
+      "saves": 40,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "chip",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "box",
+      "type": "power",
+      "attempts": 60,
+      "goals": 26,
+      "saves": 28,
+      "misses": 6
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "normal",
+      "attempts": 60,
+      "goals": 1,
+      "saves": 59,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "finesse",
+      "attempts": 60,
+      "goals": 0,
+      "saves": 60,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "chip",
+      "attempts": 60,
+      "goals": 53,
+      "saves": 7,
+      "misses": 0
+    },
+    {
+      "scenario": "one-on-one",
+      "type": "power",
+      "attempts": 60,
+      "goals": 16,
+      "saves": 43,
+      "misses": 1
+    }
+  ]
+}

@@ -1,1 +1,211 @@
-# Mini-FC
+# Mini FC
+
+**Small pitch. Big moments.** A complete, free, six-a-side arcade football game (five outfielders and an automatic goalkeeper per team) for desktop browsers and iPad Safari. Built with Three.js, JavaScript, and Vite. Everything in the stadium is procedural; there are no downloaded models, textures, accounts, API keys, or backend services.
+
+## Play on Windows
+
+Install [Node.js](https://nodejs.org/) **22.12 or newer** (Node 22 LTS recommended), then open PowerShell in this repository:
+
+```powershell
+npm install
+npm run dev
+```
+
+Open the address Vite prints in your desktop browser. For the optimized version:
+
+```powershell
+npm run build
+npm run preview
+```
+
+Use an HTTP server; double-clicking `index.html` does not run the game. The first visit needs network access to load the site. There is no offline service-worker installation.
+
+## Play on iPad through GitHub Pages
+
+No Mac, Xcode, native app, or iOS build is needed.
+
+1. Commit and push this project to the **main** branch of `orangni/Mini-FC`. If your local branch is named `work`, use `git push origin HEAD:main` after checking the remote has no newer changes.
+2. In the GitHub repository, open **Settings → Pages → Build and deployment → Source → GitHub Actions**.
+3. Open **Actions → Test and deploy Mini FC**. The push triggers the workflow; you can also select **Run workflow** on `main` after enabling Pages. It runs tests, builds, and deploys `dist/`.
+4. Use the successful deployment's actual URL on the workflow or Pages settings page. For this repository, the expected URL is **https://orangni.github.io/Mini-FC/**. This is an expected address, not a claim that deployment has happened.
+5. Open the deployed HTTPS URL in iPad Safari and rotate to landscape. Optionally use **Share → Add to Home Screen** for more screen space.
+
+Vite uses `base: './'`, so generated assets work under `/Mini-FC/`, another repository subpath, or a custom domain. The game has no client-side routes requiring a server fallback. Pull requests run validation without deploying. Deployment requires GitHub Pages to be enabled and the repository/organization to allow the included Actions.
+
+For same-network development, Vite listens on the Windows computer's network interfaces. You can visit its printed network URL from the iPad if both devices are on the same Wi-Fi and Windows Firewall permits Node on your private network. GitHub Pages avoids needing a running PC.
+
+## Controls
+
+**Balanced is the default: full techniques with light assistance.** Every technique is available on keyboard and touch in both control modes. Old Simple preferences automatically migrate to Balanced; careers and touch settings are preserved.
+
+Balanced combines responsive movement with a short coast, sprint turning cost and close dribbling. Direction still chooses shot placement; light goal aiming assistance blends it towards a safe placement rather than overriding it. Sideways finesse swipes choose explicit placement. A green ring previews the pass receiver. Tap SHOOT for a normal shot; hold and release for power, or swipe for a technique. Tap PASS for a short pass; hold it to lob.
+
+Settings → Controls → **Manual** removes the aiming/movement assistance and uses the heavier original momentum. Both options retain the same full set of techniques and persist across refresh. Sprint remains optional. Hold P / PRESS to close down automatically in Balanced; manual movement overrides the chase. Starting PRESS when your defender is more than eight metres away deliberately selects a closer defender once in Kick Off. **Career always stays locked to your created player**, and releasing movement helps the captain meet an incoming pass. Early attacking inputs buffer for up to 500ms in Balanced, 350ms in Manual.
+
+| Action                            | Desktop                  | iPad / touch                                      |
+| --------------------------------- | ------------------------ | ------------------------------------------------- |
+| Move                              | WASD / arrows            | Floating left stick; touch the left movement area |
+| Sprint                            | Hold Shift               | Hold right-hand SPRINT                            |
+| Short pass / call for a pass      | Space                    | Tap PASS                                          |
+| Through ball                      | E                        | THROUGH                                           |
+| Lobbed pass                       | L                        | Hold PASS for over 350 ms                         |
+| Normal / charged power shot       | Tap / hold and release J | Tap / hold and release SHOOT                      |
+| Chip shot                         | K                        | CHIP, or swipe SHOOT upwards                      |
+| Finesse shot                      | F                        | Swipe SHOOT sideways                              |
+| Signature skill / personal move   | C                        | Tap SKILL                                         |
+| Shield                            | Hold V                   | Hold SKILL                                        |
+| Standing tackle                   | R                        | TACKLE                                            |
+| Sliding tackle                    | X                        | SLIDE                                             |
+| Press with teammate support       | Hold P                   | Hold PRESS                                        |
+| Switch outfielder (Kick Off only) | Q                        | SWITCH while defending                            |
+| Pause / resume                    | Escape                   | Pause button / Resume                             |
+
+You always attack the far goal, towards the top of the screen. The gold ring and marker show your player regardless of kit colour. The right-hand touch buttons show PASS, THROUGH, SHOOT, CHIP, SKILL and SPRINT when attacking; TACKLE, SLIDE, PRESS, SPRINT and (in Kick Off) SWITCH when defending. PASS/TACKLE, SPRINT and SHOOT have fixed lower-row positions. Default tablet targets are 104 × 104 CSS pixels (previously 72 × 72), with larger text and 14px gaps. Compact landscape screens retain at least 64px targets. Movement and actions support simultaneous pointers and release/cancellation; captured buttons remain visible until released. The floating stick starts neutral even at the edge and filters small thumb tremors. Settings → Touch Layout changes button size, opacity and distance from the edge; these settings persist.
+
+Kick Off follows possession and switches to the pass receiver. Select another outfielder with Q. **Player Career stays locked to your created player**, including when a teammate has the ball. Use PASS to call for a pass; goalkeepers always remain automatic. Position chooses your formation role. AI teammates create passing options and forward runs; defenders mark opponents and intercept loose passes. Two separation sweeps prevent coincident footballers from stacking.
+
+Short passes aim at a teammate, through balls lead a run, and lobbed passes travel on a lofted trajectory. Shots have distinct speed, loft and curve. Accuracy depends on Shooting, distance, angle, opponent pressure and power. Chip shots rise above normal shots, finesse shots curve, and overpowered shots sacrifice accuracy. First-touch error and dribbling distance improve with Passing. Shielding slows movement and makes tackles harder; a feint moves the ball carrier sideways, briefly protects possession and has a cooldown. Sliding tackles reach further and knock the ball loose, but leave recovery time if missed. Close-contact tackles require a facing approach to the exposed ball; merely standing nearby does not retry random steals. Deliberate standing tackles have more reach. Shielding protects the back, and missed slides commit movement and recovery. A user first touch has 900ms of contact protection (550ms for AI); winning a standing tackle protects user possession for 850ms (750ms for AI). Kickoffs leave opponents six metres clear with 1.1 active seconds of protection. In Manual, early attacking taps buffer up to 350ms for the selected player; aim is sampled with the command. Defensive selection changes only on a deliberate Q/SWITCH press or a new Balanced PRESS hold, with a 500ms repeat guard. Career control is always the created captain, even before movement is processed. Exhausted sprint recovers to 24% stamina before sprinting again; normal jogging stays responsive.
+
+Matches last **120 seconds of active play** on a compact 70 × 46 pitch. Kickoffs and pauses stop the clock, including nested touch-layout and asset settings. There is one goalkeeper and five outfield players per side in a 2-2-1 formation. Keepers track shooting angles, anticipate shots, dive, catch slower balls, parry harder shots into rebounds, return to position and distribute possession, favouring open teammates. A keeper holding a catch cannot be tackled or pushed by player separation. Saves cannot cancel a ball that has already crossed the goal line. Side/end boards keep the ball in play. There are no throw-ins, corners, fouls, penalties or offsides.
+
+## Gameplay feel and difficulty
+
+Live matches use a close ball-centered camera (landscape height 33, portrait 40) with smooth tracking. Distance from the career captain never zooms the view out; the captain remains your only controllable player even off-screen. Kick Off retains pass/possession following, but defending requires Q/SWITCH or an explicit Balanced PRESS hold to change players and repeated SWITCH taps have a 500ms guard.
+
+Manual movement accelerates and brakes with a short coast; Balanced has quicker braking and turning while preserving momentum and a mild sprint turning cost. Sprint turns cost speed; low-speed and shielding touches keep the ball close, while sprinting takes longer touches. Feints move through velocity rather than teleporting the player. The ball follows damped touches around the carrier, and rendered movement is interpolated between fixed 60 Hz simulation steps.
+
+Aim passes with the movement stick or WASD. Through balls lead a runner into an open lane; receivers anticipate the ball and Kick Off assists a selected receiver when you release movement. Both modes retain directional shot placement; finesse swipes explicitly choose placement. Shots and deliberate tackles reward position/timing. Goalkeepers and tackles use actual contact/reach rather than random save/steal success rolls. Keepers read the flight and descent of long chips, retreat toward the goal line and time high saves. A genuinely stranded keeper can still be lobbed; chips retain their normal trajectory.
+
+Settings → **Difficulty** offers Easy, Normal (default), Hard and **Extra Hard**. The preset adjusts opponent decisions, positioning, anticipation, pressure and keeper reaction rather than multiplying running speed. Normal is slightly more forgiving: decisions run at 380ms rather than 340ms, anticipation falls from 280ms to 250ms, the presser aims 0.8m goal-side rather than 0.65m, and keeper reaction is 180ms rather than 160ms. Easy and Hard retain their presets. Extra Hard reduces decision intervals to 80ms and keeper reaction to 55ms, predicts movement 750ms ahead, reduces positioning error and adds a second presser in its own half while keeping a cover defender. Pressing opponents sprint using normal stamina and speed limits; your teammates retain Normal AI. These are parameter changes, not a measured human win-rate claim. Changes persist and can apply during pause. AI teammates keep passing lanes, make role-specific runs and cover dangerous space. Power shots show a charge/wind-up, and tackles/goals have lightweight procedural feedback.
+
+See [the gameplay report](docs/GAMEPLAY_OVERHAUL.md) for per-file changes, before/after balance measurements, test details and limitations. Raw seeded results are in [gameplay-balance.json](docs/gameplay-balance.json). To reproduce 12 matches per preset, run `npm run balance -- 12` (add `normal` to test just that preset).
+
+## Language and shooting
+
+Settings → **Language** switches between **English** and **한국어**. Menus, career creation, all sixteen skill names/descriptions, controls, HUD, pause/roster, training and results use the selected language. The initial choice follows the browser language; the setting persists. Switching while paused keeps the match, timer, player and save intact. Club proper names and user-created names retain their original spelling. Position option values and save IDs remain language-independent.
+
+Normal and finesse shots now keep speed through their flight and aim towards viable corners. Chip flight accounts for air drag; chips are useful against a stranded keeper, while a keeper near the line can claim high balls. A dive starts with a limited reach and extends over its animation, rather than instantly covering its maximum radius; a dive cannot instantly reverse direction. Full power retains speed but also its accuracy cost.
+
+In a repeatable isolated box fixture, normal goals increased from **0/60 to 18/60** and finesse from **0/60 to 20/60**. Against a keeper seven metres off the goal line, chip goals increased from **0/60 to 53/60**; that chip fixture against a line keeper remains defendable. Max power is still useful and can miss. These are fixed automated shot scenarios, not real-player conversion rates. Full conditions and before/after rows are in [shot-balance.json](docs/shot-balance.json); reproduce with `node tools/shot-balance.mjs`.
+
+## Player signatures
+
+Every footballer has exactly one innate signature. Club and lineup slot determine a stable assignment, including AI teammates and opponents. The five outfielders in a Kick Off team have different moves; a custom career choice can share a teammate's type. These are sixteen shared move types, not unique licensed real-player animations.
+
+| Signature                | Move                                                |
+| ------------------------ | --------------------------------------------------- |
+| Body feint / 바디 페인트 | Shoulder fake and sideways escape                   |
+| Step over / 스텝오버     | Alternating foot sweep followed by a diagonal burst |
+| Roulette / 룰렛          | Body spin with the ball rolling around the carrier  |
+| Double touch / 더블 터치 | Two opposite cuts with forward exit                 |
+| Heel to heel / 힐 투 힐  | Short back touch followed by forward acceleration   |
+| Drag back / 드래그 백    | Pull back from pressure, then exit sideways         |
+
+The additional ten moves are Elastico, Reverse elastico, La croqueta, Ball roll, Heel chop, McGeady spin, Drag and push, Stop and go, Scoop turn and V drag. Each has a different integrated movement/ball profile and procedural pose; all sixteen can be chosen at career creation and assigned to AI players.
+
+Choose your captain's signature when creating a career. The preview explains its movement and cooldown; the choice persists through matches, upgrades, seasons and refresh. Existing v1/v2 saves receive Body feint without losing attributes, XP or records. The save key is preserved and legacy schemas migrate with an exact backup.
+
+Use **C** on PC or **tap SKILL** on touch to perform your player's move, with left/right input choosing the side. Holding V / SKILL still shields, including during a signature cooldown. Moves have distinct player motion, ball paths and procedural body/foot animations. Each costs 8% stamina and has a 2.8–3.8 second cooldown. They respect possession, recovery, field bounds and interruption on losing the ball. Shots and pass techniques remain available to all outfielders.
+
+The HUD shows your signature and cooldown. **Pause → Player Skills** lists all twelve players and their effects while the match stays paused. AI uses its own move only under close frontal pressure with no clear passing option, with an extra two seconds of cooldown. Goalkeepers have an automatic Safe hands trait (catch threshold 25 instead of 24m/s) or Quick release (distribution after 0.75 instead of 0.85 seconds). Caught keeper possession remains protected.
+
+## Player career
+
+Create a named, age-18 captain, position, starting club and one of sixteen signature moves. Start at 60 overall and potential 84. Overall weights Pace/Shooting/Passing by position (striker 20/55/25%, midfielder 20/20/60%, defender 40/15/45%). Only your created player receives development; the goalkeeper remains automatic.
+
+Each season is a **compressed six-club double round robin: exactly ten fixtures**, including simulations and injury/bench absences, with no cups. Opponents preferably come from the same national league. All six clubs play ten times, with three points for a win and one for a draw. Goal difference, goals scored and club name break ties. Champions receive three upgrade points once. Unlimited seasons continue until retirement (optional from 32, automatic at 40).
+
+The hub shows your next fixture, selection, trust, form, sharpness, fitness, season/lifetime statistics, table, contracts, offers and history. Choose **one optional activity per fixture**: light attribute training, recovery, or focused point training (+0.4 per point). Performance adds small attribute gains, growth stops at potential, and attributes decline after 30. No daily calendar screens. A meaningful manager event appears roughly every two fixtures; its choices change trust, fitness, reputation or starting opportunities.
+
+Selection depends on trust, form, sharpness, fitness and club competition. You may start, enter after 60/75 football minutes, remain unused, or miss a fixture with a rare one-fixture injury. NEXT MATCH automatically simulates up to your substitute entrance. Full SIMULATE uses the same 6v6 engine, including actual captain goals/assists/ratings and minutes; unused substitutes receive no fabricated appearance or personal statistics. Active matches still last 120 seconds (90 football minutes), and career control stays locked to your captain. Restarting/quitting an unfinished fixture grants no rewards.
+
+Appearances earn 60 XP, unused fixtures 20 XP, team wins 80 XP, draws 30 XP, personal goals 40 XP. Every 100 cumulative XP yields a point. Fatigue/recovery, training and performance influence subsequent selection. Track appearances, starts, minutes, goals, assists, ratings, championships, records and club history.
+
+Contracts include seasons remaining, weekly salary, earnings and market value. Reputation, club strength and performances influence transfer/loan interest. Negotiate salary or playing-time promises; renew contracts when one season or less remains. An expired contract stops selection and wages until renewed. Moves within the current group can happen immediately without changing fixtures or standings. Moves outside the group take effect at the next season, clearly indicated in the hub. Loans return at the following season boundary. Salary accounting compresses five paid weeks into each fixture; these are simplified career rules, not a real licensed contract simulation.
+
+Progress uses the existing **`mini-fc-career-v1` LocalStorage key**, schema version 3. Before migrating v1/v2, the exact original JSON is backed up at `mini-fc-career-v1-backup-v1` / `-backup-v2`. Unfinished old seasons extend to ten fixtures; completed five-fixture seasons are archived and a new season begins without repeating awards. Earned attributes, XP, points, titles and stats are preserved. Legacy minutes/starts default to 90 per recorded appearance because old saves did not record them. Each new fixture has an ID ledger to prevent duplicate stats/rewards. Backup failure leaves the original save intact. Saves stay in this browser/domain and do not sync devices; clearing site data deletes them. Blocked storage displays a save-failure message.
+
+## Clubs, roster provenance, and local licensed assets
+
+The database contains **70 real clubs** from the user's supplied 2026/27 list: **20 Premier League, 9 Bundesliga, 20 Serie A, 20 La Liga, and PSG**. The user explicitly requested omitting the other nine Bundesliga clubs. Original Mini FC and Rival FC remain available. Kick Off includes searchable club selection and league filtering. Every club has a stable ID, name, league, home/away colours and pattern, shorts, socks, attack/midfield/defence/goalkeeper ratings and a preferred formation.
+
+Official league sites returned HTTP 403 in this environment. Membership is labelled **user-provided**, not independently verified. Coventry, Hull and Ipswich follow the user's English list; Frosinone, Venezia and Monza follow the supplied Italian list. These have not silently been replaced with a 2025/26 list. Sources to consult when access is available: [Premier League](https://www.premierleague.com/en/clubs), [Bundesliga](https://www.bundesliga.com/de/bundesliga/clubs), [Serie A](https://en.legaseriea.it/serie-a/teams).
+
+The requested Spanish roster includes Barcelona, Real Madrid, Atlético, Betis, Athletic, Sociedad, Sevilla, Villarreal, Espanyol, Valencia, Celta, Alavés, Rayo, Getafe, Osasuna, Levante, Elche, Racing Santander, Deportivo and Málaga. These follow the user's list rather than an independently verified membership list. All 20 have explicit home and away shirt/trim/shorts/socks definitions; Barcelona stripes, Rayo's sash and Elche's chest band use the existing procedural kit renderer. Korean aliases and accent-insensitive search are available for these clubs. New Spanish careers draw their five opponents from the same La Liga roster.
+
+Kits use **recognizable traditional colours and procedural patterns**. Exact 2026/27 kits, sponsors, crests and real-world ratings are **not verified or reproduced**. Ratings are gameplay estimates. Alternate-kit selection uses colour distance; an emergency neutral broadcast kit handles cases where both away choices would clash. No official graphics or scraped images are bundled.
+
+Settings → Local Kit / Crest Assets (also in club selection) accepts your locally licensed PNG/JPEG/WebP files, up to 2 MB each. A crest appears in club selection; a jersey image maps to the shared torso. Images stay in this tab, never uploaded or committed, and reset on refresh. Keepers use contrasting procedural jerseys. An emergency contrast kit can override an away texture to keep teams readable.
+
+## One HTML file
+
+The complete prebuilt game is checked into [`downloads/Mini-FC.html`](downloads/Mini-FC.html) for direct GitHub downloads. On GitHub, open that file and choose **Download raw file**. It includes all 70 clubs and needs no separate assets. To regenerate this downloadable copy after changing the game, run `npm run build:single -- downloads/Mini-FC.html`.
+
+```powershell
+npm run build:single
+```
+
+This writes `standalone/Mini-FC.html`, embedding the game, Three.js, CSS and icon. Recipients need no package installation, CDN or external assets. On desktop, save it and open in Chrome/Edge. iPad Files/Quick Look can restrict JavaScript; hosting the same file over HTTPS and opening it in Safari is the reliable iPad route. This does not remove iOS file-preview restrictions. Local-file save behaviour depends on the browser; HTTP/HTTPS hosting provides normal per-origin storage.
+
+The cloud's managed Chromium blocks `file://` navigation by administrator policy. Standalone validation therefore uses HTTP while blocking every additional asset request; the HTML itself remains a single self-contained file.
+
+## Performance and compatibility
+
+Modern WebGL2 is required. Players use low-poly geometry, shared box geometry, reusable kit materials, simple lighting and procedural action animations. The crowd uses instancing. There are no shadow maps, postprocessing or external 3D downloads. Pixel ratio caps at 1.7 (1 with Battery saver). The fixed simulation runs at 60 Hz. Lost focus and hidden tabs pause live matches. Touch actions prevent unwanted gameplay scrolling and selection, support pointer capture/cancellation and account for safe-area insets. Portrait works; landscape is recommended.
+
+The aim is 60 FPS on capable devices. Actual iPad Safari hardware and frame rate have **not** been tested; Chromium tablet emulation does not establish real Safari performance. Use Settings → Graphics → Battery saver if needed.
+
+## Tests
+
+```powershell
+npm ci
+npm test
+npm run build
+npm run build:single
+```
+
+The **102 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
+
+Optional production-browser integration checks require Python Playwright only for testing:
+
+```powershell
+python -m pip install playwright
+python -m playwright install chromium
+npm run build
+npm run preview -- --port 4173
+# In a second terminal:
+python tests/browser_career.py
+python tests/browser_language.py
+python tests/browser_signatures.py
+python tests/browser_balanced.py
+python tests/browser_smoke.py
+python tests/browser_upgrade.py
+python tests/browser_laliga.py
+python tests/browser_mobile.py
+python tests/browser_gameplay.py
+# After npm run build:single:
+python tests/browser_single.py
+```
+
+Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The language script checks both languages across menus/roster/results, sixteen choices, pause-time preservation, language persistence, canonical form values, untouched player names and career upgrades. The signature script checks all sixteen creation options, selected-skill persistence/restart, keyboard dispatch, sixteen distinct rendered poses, touch shielding/cancellation, the paused twelve-player roster, old-save XP/attribute preservation and PC-specific charge help. The Balanced script checks default/legacy settings, full keyboard techniques, shot charging/release, shielding, pass previews, six-button layouts, simultaneous movement/finesse touches, assisted defending, slide input, career lock and persistent control preferences. The added simulation checks cover assisted directional placement, retained techniques, momentum and the small first-touch window. The smoke script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, ten-fixture seasons, next season and simultaneous touch movement/sprint. The upgrade script runs in default Balanced and adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, a close ball-centered career camera without distance-driven zoom-out and persistent touch layout. The La Liga script checks the 20 Spanish clubs, Korean search, actual rendered home/away patterns and shorts/socks, Spanish career opponents and refresh persistence. The mobile regression script also uses default Balanced and checks six viewport/size combinations, target overlap, joystick neutrality/deadzone, a held shot across possession changes, fixed sprint placement and cancellation ownership. Fairness unit tests cover tackle retry intervals, shielding, catches under pressure, first-touch/kickoff protection, buffered/expired actions, manual switches, sprint recovery and goal-line precedence. Subpath checks can run under `/Mini-FC/` using a static server with `dist` mounted there.
+
+The gameplay browser script adds difficulty persistence and live changes, velocity acceleration/braking, directional input sampling, simultaneous movement and charged aiming, brush rejection, real pointer ownership and orientation pause.
+
+Time and selected season scores are accelerated through the explicit `?test=1` harness. Goal detection and input actions still use the simulation. Some isolated input fixtures freeze AI to prevent an opponent stealing the ball during a touch-gesture assertion. No test global is exposed during normal play.
+
+## Project layout
+
+- `src/match.js` — football simulation, techniques, AI and goalkeepers
+- `src/render.js` — procedural pitch, stadium, kits, footballers, animations and camera
+- `src/input.js` — keyboard, multi-touch, charge and directional shot gestures
+- `src/clubs.js` — supplied club roster, kit definitions, search and colour conflict selection
+- `src/i18n.js` — separate English/Korean UI copy and safe text/attribute localization
+- `src/skills.js` — signature catalog, stable player assignments and distinct motion profiles
+- `src/career.js` — development, trust/selection, contracts, fixtures, statistics and save migration
+- `src/career-match.js` — actual-engine simulation and captain performance accounting
+- `src/main.js` — menus, match lifecycle, local asset inputs, audio and settings
+- `tools/build-single.mjs` — reproducible self-contained HTML packaging
+- `tests/` — simulation/career/upgrade tests and browser integration checks
+- `.github/workflows/deploy.yml` — unchanged validation and GitHub Pages deployment
+
+Mini FC includes real club names and the original fictional clubs, with original procedural graphics. It is independent and has no affiliation with EA Sports or the named football organizations. No licensed official graphics are distributed.
