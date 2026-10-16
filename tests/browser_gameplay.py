@@ -26,13 +26,16 @@ with sync_playwright() as p:
  page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
  page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)
  page.on('response',lambda r:failed.append(f'{r.status} {r.url}') if r.status>=400 else None)
- page.goto(URL+'?test=1');page.click('#settings');page.select_option('#controls','advanced');page.select_option('#difficulty','hard');page.reload()
- page.wait_for_selector('#settings');assert page.evaluate('__miniFC.settings.difficulty')=='hard'
- page.click('#play');page.click('#kickoff');assert page.evaluate('__miniFC.match.difficulty')=='hard'
+ page.goto(URL+'?test=1');page.click('#settings');page.select_option('#controls','advanced');page.select_option('#difficulty','extra-hard');assert page.locator('#difficulty option').count()==4
+ page.select_option('#language','ko');expect(page.locator('#difficulty option[value="extra-hard"]')).to_have_text('엑스트라 하드')
+ page.select_option('#language','en');page.reload()
+ page.wait_for_selector('#settings');assert page.evaluate('__miniFC.settings.difficulty')=='extra-hard'
+ page.click('#play');page.click('#kickoff');assert page.evaluate('__miniFC.match.difficulty')=='extra-hard'
  page.wait_for_function('__miniFC.match.kickoffWait<=0')
  assert page.evaluate('!document.querySelector("#announcement").classList.contains("visible")')
  page.click('#pause');page.click('#settings');page.select_option('#difficulty','easy')
  assert page.evaluate('__miniFC.match.difficulty')=='easy'
+ page.select_option('#difficulty','extra-hard');assert page.evaluate('__miniFC.match.difficulty')=='extra-hard'
  page.click('#back');page.click('#resume');page.evaluate(PREPARE)
  # Real keyboard movement starts, accelerates, brakes and settles through the animation loop.
  page.keyboard.down('KeyD');page.wait_for_function('__miniFC.match.players[0].vx>5');page.keyboard.up('KeyD')
@@ -77,5 +80,5 @@ with sync_playwright() as p:
  assert page.evaluate('__miniFC.match.players[3].z')!=before
  assert page.evaluate('__miniFC.match.players.every(p=>Number.isFinite(p.x+p.z+p.vx+p.vz))')
  assert not errors,errors;assert not failed,failed
- print(json.dumps({'result':'PASS','difficulty':'persists and changes a paused match','keyboard':'acceleration, braking, directional pass','touch':'move+charge+aim, feedback, brush rejection, pointer ownership, orientation pause','runtime':'live 6v6 AI after resuming','javascript_errors':errors,'failed_http_responses':failed}))
+ print(json.dumps({'result':'PASS','difficulty':'Extra Hard persists, switches languages and applies to a paused match','keyboard':'acceleration, braking, directional pass','touch':'move+charge+aim, feedback, brush rejection, pointer ownership, orientation pause','runtime':'live 6v6 AI after resuming','javascript_errors':errors,'failed_http_responses':failed}))
  browser.close()

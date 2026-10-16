@@ -7,13 +7,14 @@ export function shotTrial({
   z = -22,
   keeperZ = -32.7,
   power = 0.5,
+  difficulty = "normal",
 } = {}) {
   let value = seed;
   const random = () => {
     value = (Math.imul(value, 1664525) + 1013904223) >>> 0;
     return value / 4294967296;
   };
-  const m = new Match({ assisted: true, career: true, random });
+  const m = new Match({ assisted: true, career: true, random, difficulty });
   m.kickoffWait = 0;
   m.ai = (p, dt) => {
     if (p.role === "goalkeeper") m.goalkeeper(p, dt);

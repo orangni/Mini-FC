@@ -42,6 +42,14 @@ export const DIFFICULTIES = Object.freeze({
     pressure: 0.25,
     keeperReaction: 0.1,
   },
+  "extra-hard": {
+    reaction: 0.08,
+    positioning: 0.08,
+    anticipation: 0.75,
+    pressure: 0.05,
+    keeperReaction: 0.055,
+    supportPress: true,
+  },
 });
 const dirFor = (team) => (team === 0 ? -1 : 1);
 const HOMES = [
@@ -925,26 +933,48 @@ export class Match {
         p.keeperSeenShot = b.shotId;
         p.keeperReaction = this.config(p.team).keeperReaction;
       }
-      const time = clamp((z - b.z) / b.vz, 0, 1.2);
-      const intercept = this.predictBall(time);
-      if (p.keeperReaction > 0) x = p.x;
-      else if (time > 0 && time < 1.2) {
+      // Account for airborne drag when judging a long flight, rather than
+      // camping at the normal angle position while a chip sails overhead.
+      const crossingTime = (plane) => {
+        const linear = (plane - b.z) / b.vz;
+        return linear > 0 && linear * 0.12 < 1
+          ? -Math.log(1 - linear * 0.12) / 0.12
+          : Math.max(0, linear);
+      };
+      let time = crossingTime(z);
+      let intercept = this.predictBall(Math.min(time, 3));
+      if (p.keeperReaction > 0) {
+        x = p.x;
+      } else {
+        if (intercept.y > 2.65 || b.y > 2.85) {
+          z = ownZ + dir * 1.5;
+          time = crossingTime(z);
+          intercept = this.predictBall(Math.min(time, 3));
+        }
+        // The keeper can reach a descending ball just goal-side of their feet.
+        // Use that contact plane to time a jump, instead of jumping at the apex.
+        const highTime = crossingTime(p.z - dir * 0.8);
+        const high = this.predictBall(Math.min(highTime, 3));
         if (
           Math.abs(ownZ - p.z) < 3.8 &&
-          time < 0.45 &&
-          intercept.y > 1.8 &&
-          intercept.y < 2.85 &&
-          Math.abs(intercept.x - p.x) < 1.2 &&
+          highTime > 0 &&
+          highTime < 0.45 &&
+          high.y > 1.8 &&
+          high.y < 3.05 &&
+          Math.abs(high.x - p.x) < 1.3 &&
+          p.saveCooldown <= 0 &&
           p.action !== "high-save"
         ) {
           p.action = "high-save";
           p.actionTime = 0.55;
         }
-        x = clamp(intercept.x, -5.5, 5.5);
+        if (time > 0 && time < 3) x = clamp(intercept.x, -5.5, 5.5);
         if (
           Math.abs(x - p.x) > 0.75 &&
           p.saveCooldown <= 0 &&
           p.action !== "dive" &&
+          p.action !== "high-save" &&
+          time > 0 &&
           time < 0.6 &&
           intercept.y < 3
         ) {
@@ -996,7 +1026,7 @@ export class Match {
         if (
           !inBox ||
           gap > reach ||
-          b.y > (p.action === "high-save" ? 2.85 : diving ? 2.65 : 1.9)
+          b.y > (p.action === "high-save" ? 3.05 : diving ? 2.65 : 1.9)
         )
           continue;
         // Fast shots outside the keeper's planted reach beat a late stretch, deterministically.
@@ -1056,7 +1086,23 @@ export class Match {
       const cover = candidates
         .filter((p) => p.id !== presser.id)
         .sort((a, c) => a.z * dirFor(team) - c.z * dirFor(team))[0];
-      this.tactics[team] = { presser: presser.id, cover: cover.id };
+      const owner = b.owner === null ? null : this.players[b.owner];
+      const support =
+        this.config(team).supportPress &&
+        owner &&
+        owner.team !== team &&
+        owner.role !== "goalkeeper" &&
+        b.z * dirFor(team) < -2
+          ? candidates.find(
+              (p) =>
+                p.id !== presser.id && p.id !== cover.id && distance(p, b) < 11,
+            )
+          : null;
+      this.tactics[team] = {
+        presser: presser.id,
+        cover: cover.id,
+        support: support?.id,
+      };
     }
   }
   receiveTarget(p) {
@@ -1187,7 +1233,7 @@ export class Match {
       this.pressing &&
       p.team === 0 &&
       this.nearest(0, b, this.controlled).id === p.id;
-    if (p.id === plan.presser || supportingPress) {
+    if (p.id === plan.presser || p.id === plan.support || supportingPress) {
       const predicted = owner
         ? {
             x: b.x + owner.vx * config.anticipation,
@@ -1265,7 +1311,18 @@ export class Match {
       this.ball.owner === p.id &&
       this.elapsed - this.possessionChangedAt < 2.8 &&
       distance(p, this.nearest(1 - p.team, p)) > 5;
-    this.move(p, x, z, counter, dt);
+    const plan = this.tactics[p.team];
+    const owner =
+      this.ball.owner === null ? null : this.players[this.ball.owner];
+    const pressingSprint =
+      this.config(p.team).supportPress &&
+      owner &&
+      owner.team !== p.team &&
+      owner.role !== "goalkeeper" &&
+      (p.id === plan.presser || p.id === plan.support) &&
+      gap > 3.5 &&
+      p.stamina > 0.3;
+    this.move(p, x, z, counter || pressingSprint, dt);
   }
   rating() {
     return (

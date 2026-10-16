@@ -108,7 +108,7 @@ export function simulate(seed, difficulty = "normal") {
 }
 export function runBalance(
   count = 12,
-  difficulties = ["easy", "normal", "hard"],
+  difficulties = ["easy", "normal", "hard", "extra-hard"],
 ) {
   const rows = [];
   for (const difficulty of difficulties)
@@ -143,6 +143,6 @@ if (
   const count = Math.max(1, Number(process.argv[2]) || 12);
   const difficulties = process.argv[3]
     ? [process.argv[3]]
-    : ["easy", "normal", "hard"];
+    : ["easy", "normal", "hard", "extra-hard"];
   console.log(JSON.stringify(runBalance(count, difficulties), null, 2));
 }

@@ -146,6 +146,7 @@ Decisions, positioning and keeper reactions. Applies immediately.|AI 판단, 위
 Easy|쉬움
 Normal|보통
 Hard|어려움
+Extra Hard|엑스트라 하드
 Graphics|그래픽
 Lower resolution can improve battery life.|해상도를 낮추면 배터리를 절약할 수 있습니다.
 High|높음

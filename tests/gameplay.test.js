@@ -281,7 +281,7 @@ test("difficulty changes reaction, anticipation and positioning rather than move
   }
   assert.equal(easy.players[3].moving, hard.players[3].moving);
   assert.equal(new Match({ difficulty: "invalid" }).difficulty, "normal");
-  assert.equal(Object.keys(DIFFICULTIES).length, 3);
+  assert.equal(Object.keys(DIFFICULTIES).length, 4);
 });
 test("goalkeepers advance in an uncovered one-on-one but retain angle position at range", () => {
   const near = fixture(),
