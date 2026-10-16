@@ -1,6 +1,8 @@
 # Gameplay overhaul
 
-Follow-up camera/control change: live matches now use a close, ball-centered view (landscape height 33, portrait 40), replacing the off-ball captain framing described below. Career control is enforced before movement and always stays on the created player. Kick Off defensive selection is manual, with a 500ms SWITCH repeat guard. The current suite has 77 tests; the balance results below describe the original overhaul checkpoint.
+Follow-up accessibility change: Simple is now the default control scheme. Instant passes/shots, goal aiming assistance, a green pass-receiver ring, quicker braking/turning, closer dribbling, 500ms action buffering and hold-to-defend reduce input demands. The three touch buttons occupy one row. An explicit new PRESS hold can select a closer defender in Kick Off; career never switches. Advanced preserves the original techniques and movement described below. Eight additional simulation tests and `browser_simple.py` cover the new controls; the old charge/gesture browser fixtures explicitly select Advanced. The historical balance figures below were measured with Advanced physics, not human play in Simple mode.
+
+Follow-up camera/control change: live matches now use a close, ball-centered view (landscape height 33, portrait 40), replacing the off-ball captain framing described below. Career control is enforced before movement and always stays on the created player. Kick Off defensive selection is manual, with a 500ms SWITCH repeat guard. The current suite has 85 tests; the balance results below describe the original overhaul checkpoint.
 
 The overhaul improves the existing 6v6 game rather than rebuilding its menus, assets or career system. The 120-second clock, goalkeeper immunity, 70 clubs, kits, v1/v2 save compatibility and large touch controls remain supported.
 

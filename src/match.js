@@ -61,10 +61,12 @@ export class Match {
     position = "Striker",
     teams = null,
     difficulty = "normal",
+    assisted = false,
   } = {}) {
     this.attributes = attributes;
     this.random = random;
     this.demo = demo;
+    this.assisted = assisted;
     this.career = career;
     this.position = position;
     this.teams = teams;
@@ -451,25 +453,31 @@ export class Match {
       (type === "power" ? Math.max(0, power - 0.65) * 4 : 0);
     if (type === "finesse") spread *= 0.65;
     if (type === "chip") spread *= 1.15;
+    if (user && this.assisted) spread *= 0.75;
     const keeper = this.players[TEAM_IDS[1 - p.team][5]];
-    const direction = options.direction;
+    // Movement chooses positioning in Simple mode; deliberate swipe placement still wins.
+    const direction = user && this.assisted ? null : options.direction;
     const directional =
       direction && Math.hypot(direction.x || 0, direction.z || 0) > 0.15;
     const placement =
       options.aimX !== undefined
         ? clamp(options.aimX, -4.3, 4.3)
-        : directional && Math.abs(direction.x) > 0.15
-          ? clamp(
-              direction.x /
-                Math.max(0.65, Math.hypot(direction.x, direction.z)),
-              -1,
-              1,
-            ) * 4.1
-          : Math.abs(p.x) < 3
-            ? keeper.x >= 0
-              ? -2.6
-              : 2.6
-            : -Math.sign(p.x) * 2.6;
+        : user && this.assisted
+          ? keeper.x >= 0
+            ? -3.5
+            : 3.5
+          : directional && Math.abs(direction.x) > 0.15
+            ? clamp(
+                direction.x /
+                  Math.max(0.65, Math.hypot(direction.x, direction.z)),
+                -1,
+                1,
+              ) * 4.1
+            : Math.abs(p.x) < 3
+              ? keeper.x >= 0
+                ? -2.6
+                : 2.6
+              : -Math.sign(p.x) * 2.6;
     const targetX = clamp(
       placement + (this.random() - 0.5) * spread * 2,
       -7.5,
@@ -632,6 +640,7 @@ export class Match {
   }
   move(p, x, z, sprint, dt) {
     const pace = this.attributesFor(p).pace;
+    const assist = this.assisted && !this.demo && p.id === this.controlled;
     if (p.feintTime > 0) {
       x += p.feintX * 0.85;
       z += p.feintZ * 0.85;
@@ -658,9 +667,9 @@ export class Match {
     let speed =
       (5.6 + pace * 0.052) *
       Math.min(mag, 1) *
-      (running ? 1.5 * (0.94 + p.stamina * 0.06) : 1);
+      (running ? (assist ? 1.35 : 1.5) * (0.94 + p.stamina * 0.06) : 1);
     const velocity = Math.hypot(p.vx, p.vz);
-    if (running && velocity > 1) {
+    if (running && velocity > 1 && !assist) {
       const alignment = (p.vx * d.x + p.vz * d.z) / velocity;
       speed *= clamp(0.5 + (alignment + 1) * 0.25, 0.5, 1);
     }
@@ -670,7 +679,13 @@ export class Match {
     const vx = d.x * speed,
       vz = d.z * speed;
     const change = Math.hypot(vx - p.vx, vz - p.vz);
-    const acceleration = mag > 0.05 ? 58 + pace * 0.35 : 54;
+    const acceleration = assist
+      ? mag > 0.05
+        ? 110 + pace * 0.2
+        : 125
+      : mag > 0.05
+        ? 58 + pace * 0.35
+        : 54;
     const blend = change > 0 ? Math.min(1, (acceleration * dt) / change) : 0;
     p.vx += (vx - p.vx) * blend;
     p.vz += (vz - p.vz) * blend;
@@ -686,7 +701,7 @@ export class Match {
       const angle = turnAngle(
         Math.atan2(p.dx, p.dz),
         Math.atan2(d.x, d.z),
-        dt * (running ? 7.5 : 16),
+        dt * (assist ? 22 : running ? 7.5 : 16),
       );
       p.dx = Math.sin(angle);
       p.dz = Math.cos(angle);
@@ -714,14 +729,21 @@ export class Match {
       b.vx = p.vx;
       b.vz = p.vz;
     }
-    b.orbit = turnAngle(b.orbit, heading, dt * (p.shield ? 12 : 9));
+    const assist = this.assisted && !this.demo && p.id === this.controlled;
+    b.orbit = turnAngle(
+      b.orbit,
+      heading,
+      dt * (assist ? 18 : p.shield ? 12 : 9),
+    );
     p.touchPhase += dt * p.moving * 1.7;
-    const touch = 0.12 * (1 - Math.cos(p.touchPhase));
+    const touch = (assist ? 0.05 : 0.12) * (1 - Math.cos(p.touchPhase));
     const offset = p.shield
       ? 0.72
       : 0.74 +
         Math.min(1, p.moving / 13) *
-          (0.5 + (100 - this.attributesFor(p).passing) * 0.003) +
+          (assist
+            ? 0.24
+            : 0.5 + (100 - this.attributesFor(p).passing) * 0.003) +
         touch;
     const tx = p.x + Math.sin(b.orbit) * offset,
       tz = p.z + Math.cos(b.orbit) * offset;
@@ -1178,7 +1200,7 @@ export class Match {
         action,
         id: this.controlled,
         input: { ...input },
-        time: 0.35,
+        time: this.assisted ? 0.5 : 0.35,
       };
   }
   tryQueuedAction() {
@@ -1238,6 +1260,17 @@ export class Match {
     b.previousX = b.x;
     b.previousY = b.y;
     b.previousZ = b.z;
+    if (
+      this.assisted &&
+      !this.career &&
+      !this.demo &&
+      input.press &&
+      !this.pressing &&
+      b.owner !== null &&
+      this.players[b.owner].team === 1 &&
+      distance(this.players[this.controlled], b) > 8
+    )
+      this.switchPlayer();
     this.pressing = !!input.press;
     b.ignoreTime = Math.max(0, b.ignoreTime - dt);
     if (this.pendingPass && (this.pendingPass.time -= dt) <= 0)
@@ -1270,13 +1303,25 @@ export class Match {
         if (
           this.pendingPass?.receiver === p.id &&
           b.owner === null &&
-          !this.career &&
+          (!this.career || this.assisted) &&
           Math.hypot(input.x || 0, input.z || 0) < 0.12
         ) {
           const target = this.receiveTarget(p),
             d = unit(target.x - p.x, target.z - p.z);
           const strength = Math.min(1, distance(p, target) * 1.2);
           this.move(p, d.x * strength, d.z * strength, false, dt);
+        } else if (
+          this.assisted &&
+          input.press &&
+          b.owner !== null &&
+          this.players[b.owner].team !== p.team &&
+          Math.hypot(input.x || 0, input.z || 0) < 0.15
+        ) {
+          const owner = this.players[b.owner];
+          const gap = distance(p, b);
+          const d = unit(b.x - p.x, b.z - p.z);
+          this.move(p, gap > 1.1 ? d.x : 0, gap > 1.1 ? d.z : 0, false, dt);
+          if (owner.role !== "goalkeeper" && gap < 2.2) this.tackle(p.id);
         } else
           this.move(
             p,

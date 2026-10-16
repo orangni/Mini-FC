@@ -26,7 +26,7 @@ with sync_playwright() as p:
  page=context.new_page();page.on('pageerror',lambda e:errors.append(str(e)))
  page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)
  page.on('response',lambda r:failed.append(f'{r.status} {r.url}') if r.status>=400 else None)
- page.goto(URL+'?test=1');page.click('#settings');page.select_option('#difficulty','hard');page.reload()
+ page.goto(URL+'?test=1');page.click('#settings');page.select_option('#controls','advanced');page.select_option('#difficulty','hard');page.reload()
  page.wait_for_selector('#settings');assert page.evaluate('__miniFC.settings.difficulty')=='hard'
  page.click('#play');page.click('#kickoff');assert page.evaluate('__miniFC.match.difficulty')=='hard'
  page.wait_for_function('__miniFC.match.kickoffWait<=0')

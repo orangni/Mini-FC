@@ -20,6 +20,8 @@ export class Input {
     this.axes = { x: 0, z: 0 };
     this.actions = {};
     this.active = false;
+    this.simple = false;
+    this.attacking = true;
     this.sprint = false;
     this.press = false;
     this.shield = false;
@@ -45,8 +47,14 @@ export class Input {
         e.preventDefault();
       this.keys.add(e.code);
       if (e.repeat) return;
+      if (this.simple && ["KeyJ", "KeyX"].includes(e.code)) {
+        if (this.attacking) this.actions.shoot = true;
+        this.actions.aimDirection = this.direction();
+        return;
+      }
       const map = {
-        Space: "pass",
+        Space: this.simple && !this.attacking ? "tackle" : "pass",
+        ...(this.simple ? { KeyZ: this.attacking ? "pass" : "tackle" } : {}),
         KeyE: "through",
         KeyL: "lob",
         KeyK: "chip",
@@ -64,7 +72,8 @@ export class Input {
     });
     window.addEventListener("keyup", (e) => {
       this.keys.delete(e.code);
-      if (e.code === "KeyJ" && this.active) this.endShot("keyboard", 0, 0);
+      if (e.code === "KeyJ" && this.active && !this.simple)
+        this.endShot("keyboard", 0, 0);
     });
     window.addEventListener("blur", () => {
       this.reset();
@@ -141,7 +150,10 @@ export class Input {
           y: e.clientY,
           aim: this.direction(),
         });
-        if (action === "shoot")
+        if (this.simple && ["shoot", "pass"].includes(action)) {
+          this.actions[action] = true;
+          this.actions.aimDirection = this.direction();
+        } else if (action === "shoot")
           this.beginShot(e.pointerId, e.clientX, e.clientY);
         else if (action === "sprint") {
           this.sprintPointers.add(e.pointerId);
@@ -177,12 +189,12 @@ export class Input {
         );
         if (!hold || hold.action !== action) return;
         const elapsed = performance.now() - hold.at;
-        if (action === "shoot") {
+        if (action === "shoot" && !this.simple) {
           if (cancel) {
             if (this.shooting?.id === e.pointerId) this.shooting = null;
           } else this.endShot(e.pointerId, e.clientX, e.clientY);
         }
-        if (!cancel && this.active && action === "pass") {
+        if (!cancel && this.active && action === "pass" && !this.simple) {
           this.actions[elapsed > 350 ? "lob" : "pass"] = true;
           this.actions.aimDirection = this.actionAim(hold.aim);
         }
@@ -237,17 +249,26 @@ export class Input {
       [...this.buttonHolds.values()].some((h) => h.action !== "sprint")
     )
       return;
-    if (this.context === `${attacking}:${career}`) return;
-    this.context = `${attacking}:${career}`;
+    this.attacking = attacking;
+    if (this.context === `${attacking}:${career}:${this.simple}`) return;
+    this.context = `${attacking}:${career}:${this.simple}`;
     document.querySelectorAll("[data-phase]").forEach((button) => {
       button.hidden =
         button.dataset.phase !== (attacking ? "attack" : "defend") ||
-        (button.id === "switch-button" && career);
+        (button.id === "switch-button" && career) ||
+        (this.simple &&
+          [
+            "through-button",
+            "chip-button",
+            "skill-button",
+            "slide-button",
+            "switch-button",
+          ].includes(button.id));
     });
   }
   updateStick(e) {
     const r = this.joystick.getBoundingClientRect(),
-      radius = r.width * 0.32;
+      radius = r.width * (this.simple ? 0.24 : 0.32);
     let x = e.clientX - this.stickOrigin.x,
       z = e.clientY - this.stickOrigin.z;
     const d = Math.hypot(x, z);
@@ -257,7 +278,11 @@ export class Input {
     }
     // Ignore small thumb tremors, then smoothly remap the remaining travel.
     const magnitude = Math.hypot(x, z) / radius;
-    const strength = Math.max(0, (magnitude - 0.1) / 0.9);
+    const deadzone = this.simple ? 0.08 : 0.1;
+    const strength = Math.pow(
+      Math.max(0, (magnitude - deadzone) / (1 - deadzone)),
+      this.simple ? 0.8 : 1,
+    );
     this.axes =
       magnitude > 0
         ? {
@@ -300,7 +325,10 @@ export class Input {
       charging: !!this.shooting,
       charge: this.charge(),
       sprint: this.sprint || k.has("ShiftLeft") || k.has("ShiftRight"),
-      press: this.press || k.has("KeyP"),
+      press:
+        this.press ||
+        k.has("KeyP") ||
+        (this.simple && !this.attacking && (k.has("KeyJ") || k.has("KeyX"))),
       shield: this.shield || k.has("KeyV"),
       ...actions,
     };

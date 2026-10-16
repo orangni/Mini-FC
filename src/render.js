@@ -77,6 +77,12 @@ export class Renderer {
     );
     this.ring.rotation.x = -Math.PI / 2;
     this.scene.add(this.ring);
+    this.passRing = new THREE.Mesh(
+      this.ring.geometry,
+      new THREE.MeshBasicMaterial({ color: 0x8af2d0, side: THREE.DoubleSide }),
+    );
+    this.passRing.rotation.x = -Math.PI / 2;
+    this.scene.add(this.passRing);
     this.quality = quality;
     this.resize();
     window.addEventListener("resize", () => this.resize());
@@ -553,6 +559,16 @@ export class Renderer {
     this.ballShadow.scale.setScalar(1 + b.y * 0.08);
     const p = match.players[match.controlled];
     const selectedPosition = this.models[p.id].root.position;
+    const passTarget =
+      !menu && match.assisted && b.owner === p.id
+        ? match.passTarget(p, "short", match.passAim)
+        : null;
+    this.passRing.visible = !!passTarget;
+    if (passTarget) {
+      const receiver = this.models[passTarget.id].root.position;
+      this.passRing.position.set(receiver.x, 0.08, receiver.z);
+      this.passRing.scale.setScalar(0.95);
+    }
     this.marker.visible = this.ring.visible = !menu;
     this.marker.position.set(
       selectedPosition.x,
