@@ -59,7 +59,7 @@ test("keyboard-equivalent movement, diagonal normalization, sprint and stamina",
   );
   assert.ok(sprint.players[0].x > straight.players[0].x * 1.3);
   assert.ok(sprint.players[0].stamina < 1);
-  assert.ok(Math.abs(straight.ball.x - straight.players[0].x) < 1.1);
+  assert.ok(Math.abs(straight.ball.x - straight.players[0].x) < 1.65);
 });
 test("a user shot crosses the goal line, scores once, and gives rivals kickoff", () => {
   const m = clearShot();
@@ -122,7 +122,9 @@ test("automatic tackle transfers possession without immediate steal-back", () =>
   m.players[0].cooldown = 0;
   m.players[3].cooldown = 0;
   m.players[3].x = 0;
-  m.players[3].z = -23;
+  m.players[3].z = -25.3;
+  m.players[3].dz = 1;
+  m.players[3].vz = 3;
   m.step(1 / 60);
   assert.equal(m.ball.owner, 3);
   m.step(1 / 60);

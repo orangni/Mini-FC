@@ -56,7 +56,10 @@ export class Input {
         KeyX: "slide",
         KeyQ: "switch",
       };
-      if (map[e.code]) this.actions[map[e.code]] = true;
+      if (map[e.code]) {
+        this.actions[map[e.code]] = true;
+        this.actions.aimDirection = this.direction();
+      }
       if (e.code === "KeyJ") this.beginShot("keyboard", 0, 0);
     });
     window.addEventListener("keyup", (e) => {
@@ -64,6 +67,10 @@ export class Input {
       if (e.code === "KeyJ" && this.active) this.endShot("keyboard", 0, 0);
     });
     window.addEventListener("blur", () => {
+      this.reset();
+      onPause(true);
+    });
+    window.addEventListener("orientationchange", () => {
       this.reset();
       onPause(true);
     });
@@ -122,7 +129,8 @@ export class Input {
         if (
           !this.active ||
           [...this.buttonHolds.values()].some((h) => h.action === action)
-        ) return;
+        )
+          return;
         e.preventDefault();
         button.setPointerCapture(e.pointerId);
         button.classList.add("pressed");
@@ -131,6 +139,7 @@ export class Input {
           at: performance.now(),
           x: e.clientX,
           y: e.clientY,
+          aim: this.direction(),
         });
         if (action === "shoot")
           this.beginShot(e.pointerId, e.clientX, e.clientY);
@@ -139,7 +148,10 @@ export class Input {
           this.sprint = true;
         } else if (action === "press") this.press = true;
         else if (action === "skill") this.shield = true;
-        else if (action !== "pass") this.actions[action] = true;
+        else if (action !== "pass") {
+          this.actions[action] = true;
+          this.actions.aimDirection = this.direction();
+        }
       });
       button.addEventListener("pointermove", (e) => {
         if (this.shooting?.id === e.pointerId) {
@@ -149,6 +161,7 @@ export class Input {
       });
       const end = (e, cancel = false) => {
         const hold = this.buttonHolds.get(e.pointerId);
+        if (hold && hold.action !== action) return;
         this.buttonHolds.delete(e.pointerId);
         if (![...this.buttonHolds.values()].some((h) => h.action === action))
           button.classList.remove("pressed");
@@ -169,9 +182,17 @@ export class Input {
             if (this.shooting?.id === e.pointerId) this.shooting = null;
           } else this.endShot(e.pointerId, e.clientX, e.clientY);
         }
-        if (!cancel && this.active && action === "pass")
+        if (!cancel && this.active && action === "pass") {
           this.actions[elapsed > 350 ? "lob" : "pass"] = true;
-        if (!cancel && this.active && action === "skill" && elapsed < 350)
+          this.actions.aimDirection = this.actionAim(hold.aim);
+        }
+        if (
+          !cancel &&
+          this.active &&
+          action === "skill" &&
+          elapsed < 350 &&
+          Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 22
+        )
           this.actions.skill = true;
       };
       button.addEventListener("pointerup", (e) => end(e));
@@ -181,7 +202,15 @@ export class Input {
   }
   beginShot(id, x, y) {
     if (!this.shooting)
-      this.shooting = { id, x, y, dx: 0, dy: 0, at: performance.now() };
+      this.shooting = {
+        id,
+        x,
+        y,
+        dx: 0,
+        dy: 0,
+        at: performance.now(),
+        aim: this.direction(),
+      };
   }
   endShot(id, x, y) {
     if (this.shooting?.id !== id) return;
@@ -193,6 +222,7 @@ export class Input {
         y - this.shooting.y,
       ),
     );
+    this.actions.aimDirection = this.actionAim(this.shooting.aim);
     this.shooting = null;
   }
   charge() {
@@ -205,7 +235,8 @@ export class Input {
     if (
       this.shooting ||
       [...this.buttonHolds.values()].some((h) => h.action !== "sprint")
-    ) return;
+    )
+      return;
     if (this.context === `${attacking}:${career}`) return;
     this.context = `${attacking}:${career}`;
     document.querySelectorAll("[data-phase]").forEach((button) => {
@@ -227,18 +258,17 @@ export class Input {
     // Ignore small thumb tremors, then smoothly remap the remaining travel.
     const magnitude = Math.hypot(x, z) / radius;
     const strength = Math.max(0, (magnitude - 0.1) / 0.9);
-    this.axes = magnitude > 0
-      ? {
-          x: (x / radius) * (strength / magnitude),
-          z: (z / radius) * (strength / magnitude),
-        }
-      : { x: 0, z: 0 };
+    this.axes =
+      magnitude > 0
+        ? {
+            x: (x / radius) * (strength / magnitude),
+            z: (z / radius) * (strength / magnitude),
+          }
+        : { x: 0, z: 0 };
     this.stick.style.transform = `translate(${x}px, ${z}px)`;
   }
-  read() {
-    const k = this.keys,
-      actions = this.actions;
-    this.actions = {};
+  direction() {
+    const k = this.keys;
     return {
       x:
         this.axes.x +
@@ -248,6 +278,27 @@ export class Input {
         this.axes.z +
         (k.has("KeyS") || k.has("ArrowDown") ? 1 : 0) -
         (k.has("KeyW") || k.has("ArrowUp") ? 1 : 0),
+    };
+  }
+  actionAim(fallback) {
+    const direction = this.direction();
+    return Math.hypot(direction.x, direction.z) > 0.15
+      ? direction
+      : fallback || direction;
+  }
+  read() {
+    const k = this.keys,
+      direction = this.direction(),
+      actions = this.actions;
+    this.actions = {};
+    if (Math.hypot(direction.x, direction.z) > 0.15) {
+      if (this.shooting) this.shooting.aim = direction;
+      for (const hold of this.buttonHolds.values()) hold.aim = direction;
+    }
+    return {
+      ...direction,
+      charging: !!this.shooting,
+      charge: this.charge(),
       sprint: this.sprint || k.has("ShiftLeft") || k.has("ShiftRight"),
       press: this.press || k.has("KeyP"),
       shield: this.shield || k.has("KeyV"),

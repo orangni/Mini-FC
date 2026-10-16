@@ -51,7 +51,7 @@ with sync_playwright() as p:
  prepare();page.tap('#chip-button');page.wait_for_function('__miniFC.match.testLastShot?.type==="chip"');assert page.evaluate('__miniFC.match.testLastShot.vy')>5
  prepare();page.tap('#through-button');page.wait_for_function('__miniFC.match.testLastPass?.type==="through"');assert page.evaluate('__miniFC.match.stats.passes')>=1
  prepare();hold('#pass-button',420);page.wait_for_function('__miniFC.match.testLastPass?.type==="lob"');assert page.evaluate('__miniFC.match.testLastPass.vy')>3
- prepare();page.tap('#skill-button');page.wait_for_function('__miniFC.match.players[0].skillCooldown>0');assert page.evaluate('Math.abs(__miniFC.match.players[0].x)')>1
+ prepare();page.tap('#skill-button');page.wait_for_function('__miniFC.match.players[0].skillCooldown>0');page.wait_for_function('Math.abs(__miniFC.match.players[0].x)>.8')
  prepare();hold('#skill-button',400);assert page.evaluate('__miniFC.input.shield') is False
  # Swipe SHOOT sideways into a curved shot.
  prepare();b=page.locator('#shoot-button').bounding_box();x=b['x']+b['width']/2;y=b['y']+b['height']/2

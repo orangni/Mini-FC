@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
+    "balance": "node tools/balance.mjs",
     "build:single": "node tools/build-single.mjs"
   },
   "dependencies": {

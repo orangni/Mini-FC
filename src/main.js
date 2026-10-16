@@ -44,6 +44,7 @@ const bounded = (v, lo, hi, fall) =>
   Number.isFinite(Number(v)) ? Math.max(lo, Math.min(hi, Number(v))) : fall;
 let settings = {
   quality: "high",
+  difficulty: "normal",
   sound: true,
   touch: "auto",
   touchSize: 100,
@@ -62,6 +63,9 @@ try {
       touchInset: bounded(saved.touchInset, 12, 80, 24),
       home: getClub(saved.home || "arsenal").id,
       away: getClub(saved.away || "chelsea").id,
+      difficulty: ["easy", "normal", "hard"].includes(saved.difficulty)
+        ? saved.difficulty
+        : "normal",
       quality: saved.quality === "low" ? "low" : "high",
       sound: saved.sound !== false,
       touch: ["auto", "on"].includes(saved.touch) ? saved.touch : "auto",
@@ -78,7 +82,7 @@ try {
   throw new Error("WebGL is unavailable.");
 }
 let mode = "main",
-  match = new Match({ demo: true }),
+  match = new Match({ demo: true, difficulty: settings.difficulty }),
   careerMatch = false,
   opponentName = "Rival FC";
 let announcementUntil = 0,
@@ -183,7 +187,7 @@ function goMain() {
   mode = "main";
   hud.hidden = true;
   input.reset();
-  match = new Match({ demo: true });
+  match = new Match({ demo: true, difficulty: settings.difficulty });
   careerMatch = false;
   shell(
     `<div class="home-layout"><section class="home-copy"><div class="brand"><span class="brand-mark">M<span>F</span></span> MINI FC <small>THE SMALL-SIDED GAME</small></div><span class="eyebrow">EVERY TOUCH COUNTS</span><h1>Small pitch.<br>Big <em>moments.</em></h1><p>Six a side. Two minutes.<br>Your next great goal is one touch away.</p><div class="home-actions">${button("play", "<span>01</span> PLAY <b>↗</b>", "primary")}${button("career", "<span>02</span> CAREER <b>↗</b>")}${button("settings", "<span>03</span> SETTINGS <b>↗</b>", "subtle")}</div><div class="home-foot"><span class="live-dot"></span> OFFLINE CAREER · NO SIGN-IN · JUST FOOTBALL</div></section><aside class="match-card"><div class="eyebrow">WELCOME TO THE NEIGHBORHOOD</div><div class="match-card-score"><span class="club-badge">M</span><small>VS</small><span class="club-badge rival">R</span></div><b>MINI FC <span>vs</span> RIVAL FC</b><p>FLOODLIGHT PARK / 6V6</p><div class="card-rule"></div><span>Made for quick matches.<br>Built for the long career.</span></aside></div><div class="bottom-line"><span>MINI FC / VOL. 02</span><span>KEYBOARD + TOUCH</span></div>`,
@@ -438,10 +442,19 @@ function upgradeMenu() {
 function settingsMenu(from) {
   mode = "settings";
   shell(
-    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p><b>WASD</b> Move <b>SHIFT</b> Sprint <b>SPACE</b> Pass <b>J</b> Hold / release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Skill <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Press <b>Q</b> Switch</p><p>On iPad, touch anywhere in the left movement area to place the floating stick. Sprint is on the left. Hold SHOOT for power; swipe it up for a chip or sideways for finesse. Hold PASS to lob. Hold SKILL to shield. Controls change when possession changes.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
+    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Difficulty</b><small>Decisions, positioning and keeper reactions. Applies immediately.</small></div><select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div><div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p><b>WASD</b> Move <b>SHIFT</b> Sprint <b>SPACE</b> Pass <b>J</b> Hold / release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Skill <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Press <b>Q</b> Switch</p><p>On iPad, touch anywhere in the left movement area to place the floating stick. SPRINT sits between PASS and SHOOT on the right. Aim passes and shots with the movement stick. Hold SHOOT for power; swipe it up for a chip or sideways for finesse. Hold PASS to lob. Hold SKILL to shield. Controls change when possession changes.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
   );
   bind("touch-layout", () => touchLayoutMenu(from));
   bind("local-assets", () => assetsMenu(() => settingsMenu(from)));
+  $("#difficulty").value = settings.difficulty;
+  $("#difficulty").onchange = (e) => {
+    settings.difficulty = e.target.value;
+    match.difficulty = settings.difficulty;
+    match.players.forEach((p) => {
+      p.thinkTime = 0;
+    });
+    saveSettings();
+  };
   $("#quality").value = settings.quality;
   $("#sound").value = settings.sound ? "on" : "off";
   $("#touch").value = settings.touch;
@@ -498,6 +511,7 @@ function startMatch(isCareer) {
     career: isCareer,
     position: isCareer ? career.position : "Striker",
     teams: [home, away],
+    difficulty: settings.difficulty,
   });
   const kits = selectKits(home, away);
   document.documentElement.style.setProperty(
@@ -545,7 +559,8 @@ function resume() {
 }
 function announce(title, sub = "") {
   $("#announcement").innerHTML = `<strong>${title}</strong><span>${sub}</span>`;
-  announcementUntil = performance.now() + 2100;
+  // Fade out before the 1.2-second restart freeze ends, keeping live play visible.
+  announcementUntil = performance.now() + 950;
   $("#announcement").classList.add("visible");
 }
 function formatTime(seconds) {
@@ -566,6 +581,10 @@ function updateHUD() {
   const charge = input.charge();
   $("#shot-power").classList.toggle("charging", charge > 0);
   $("#shot-power>span").style.width = `${charge * 100}%`;
+  $("#shot-power small").textContent =
+    charge > 0
+      ? `POWER ${Math.round(charge * 100)}% · RELEASE TO SHOOT · SWIPE FOR TECHNIQUE`
+      : "SHOT POWER · SWIPE ↑ CHIP / SIDEWAYS FINESSE";
   $("#pass-button").firstChild.textContent =
     careerMatch && owner?.team === 0 && owner.id !== 0 ? "CALL PASS" : "PASS";
   $("#stamina span").style.width =
@@ -615,8 +634,31 @@ function frame(now) {
             `${match.score[0]} – ${match.score[1]}`,
           );
           tone(event.team === 0 ? 660 : 230, 0.5, "triangle");
+          renderer.feedback("goal", 1);
+          $(".scorebug").animate(
+            [
+              { boxShadow: "0 0 0px #f6ca6200" },
+              { boxShadow: "0 0 30px #f6ca6288", offset: 0.3 },
+              { boxShadow: "0 0 0px #f6ca6200" },
+            ],
+            { duration: 950 },
+          );
+          tone(event.team === 0 ? 880 : 180, 0.3, "sine", 0.04);
         }
-        if (event.type === "shot") tone(110, 0.11, "triangle", 0.06);
+        if (event.type === "shot") {
+          tone(
+            event.technique === "power" ? 75 : 110,
+            event.technique === "power" ? 0.17 : 0.11,
+            "triangle",
+            0.06,
+          );
+          if (event.technique === "power")
+            renderer.feedback("shot", event.power);
+        }
+        if (event.type === "tackle") {
+          tone(event.slide ? 85 : 145, 0.1, "triangle", 0.035);
+          renderer.feedback("tackle", 0.4);
+        }
         if (event.type === "pass") tone(190, 0.07, "sine");
         if (event.type === "save") {
           tone(260, 0.1);
@@ -637,13 +679,21 @@ function frame(now) {
     ) {
       match.step(1 / 60);
       match.takeEvents();
-      if (match.finished) match = new Match({ demo: true });
+      if (match.finished)
+        match = new Match({ demo: true, difficulty: settings.difficulty });
     }
     accumulator -= 1 / 60;
   }
   if (mode === "playing") updateHUD();
   if (now > announcementUntil) $("#announcement").classList.remove("visible");
-  renderer.draw(match, dt, hud.hidden);
+  renderer.draw(
+    match,
+    dt,
+    hud.hidden,
+    mode === "playing" || (hud.hidden && match.demo && !match.finished)
+      ? accumulator * 60
+      : 1,
+  );
   requestAnimationFrame(frame);
 }
 goMain();

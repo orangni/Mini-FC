@@ -15,6 +15,10 @@ export class Renderer {
     this.camera = new THREE.PerspectiveCamera(47, 1, 0.1, 220);
     this.camera.position.set(0, 62, 53);
     this.look = new THREE.Vector3();
+    this.cameraTarget = new THREE.Vector3();
+    this.focusTarget = new THREE.Vector3();
+    this.feedbackTime = 0;
+    this.feedbackKind = "";
     this.scene.add(new THREE.HemisphereLight(0xd6eeff, 0x36533c, 2.5));
     const sun = new THREE.DirectionalLight(0xffedce, 2.1);
     sun.position.set(-30, 60, 25);
@@ -479,11 +483,20 @@ export class Renderer {
     this.quality = quality;
     this.resize();
   }
-  draw(match, dt, menu) {
+  feedback(kind, strength = 1) {
+    this.feedbackKind = kind;
+    this.feedbackStrength = Math.max(0, Math.min(1, strength));
+    this.feedbackTime = kind === "goal" ? 0.9 : 0.25;
+  }
+  draw(match, dt, menu, alpha = 1) {
     this.applyTeams(match);
     match.players.forEach((p, i) => {
       const m = this.models[i];
-      m.root.position.set(p.x, 0, p.z);
+      m.root.position.set(
+        (p.previousX ?? p.x) + (p.x - (p.previousX ?? p.x)) * alpha,
+        0,
+        (p.previousZ ?? p.z) + (p.z - (p.previousZ ?? p.z)) * alpha,
+      );
       m.body.rotation.y = Math.atan2(p.dx, p.dz);
       m.phase += dt * p.moving * 1.8;
       const swing = Math.sin(m.phase) * Math.min(p.moving / 12, 0.8);
@@ -493,13 +506,22 @@ export class Renderer {
       m.arms[1].rotation.x = swing * 0.7;
       m.body.position.y = p.moving > 0 ? Math.abs(Math.sin(m.phase)) * 0.08 : 0;
       m.body.rotation.z = 0;
-      m.body.rotation.x = 0;
+      m.body.rotation.x = Math.min(0.15, p.moving * 0.009);
       const action = Math.sin(Math.min(1, p.actionTime / 0.5) * Math.PI);
       if (p.action === "shot" || p.action === "pass") {
         m.legs[1].rotation.x = -action * 1.5;
         m.arms[0].rotation.z = -0.5;
       } else m.arms[0].rotation.z = 0;
-      if (p.action === "tackle") m.legs[1].rotation.x = -0.9;
+      if (p.action === "tackle") {
+        m.legs[1].rotation.x = -0.9;
+        m.body.rotation.x = 0.22;
+        m.arms[0].rotation.x = -0.5;
+      }
+      if (p.charging > 0 && match.ball.owner === p.id) {
+        m.legs[1].rotation.x = 0.35 + p.charging * 0.7;
+        m.body.rotation.x = -0.08;
+        m.arms[0].rotation.z = -0.3;
+      }
       if (p.action === "slide") {
         m.body.position.y = -0.45;
         m.body.rotation.x = 0.8;
@@ -520,31 +542,65 @@ export class Renderer {
       } else m.arms[1].rotation.z = 0;
     });
     const b = match.ball;
-    this.ball.position.set(b.x, b.y, b.z);
+    this.ball.position.set(
+      (b.previousX ?? b.x) + (b.x - (b.previousX ?? b.x)) * alpha,
+      (b.previousY ?? b.y) + (b.y - (b.previousY ?? b.y)) * alpha,
+      (b.previousZ ?? b.z) + (b.z - (b.previousZ ?? b.z)) * alpha,
+    );
     this.ball.rotation.x += b.vz * dt * 0.8;
     this.ball.rotation.z -= b.vx * dt * 0.8;
     this.ballShadow.position.set(b.x, 0.065, b.z);
     this.ballShadow.scale.setScalar(1 + b.y * 0.08);
     const p = match.players[match.controlled];
+    const selectedPosition = this.models[p.id].root.position;
     this.marker.visible = this.ring.visible = !menu;
     this.marker.position.set(
-      p.x,
+      selectedPosition.x,
       3.35 + Math.sin(performance.now() * 0.004) * 0.1,
-      p.z,
+      selectedPosition.z,
     );
-    this.ring.position.set(p.x, 0.085, p.z);
+    this.ring.position.set(selectedPosition.x, 0.085, selectedPosition.z);
+    this.feedbackTime = Math.max(0, this.feedbackTime - dt);
+    const charge = p.charging || 0;
+    this.ring.scale.setScalar(
+      1 +
+        charge * 0.16 +
+        (this.feedbackTime > 0
+          ? this.feedbackTime * 0.12 * this.feedbackStrength
+          : 0),
+    );
+    this.ring.material.color.set(
+      charge > 0.75
+        ? 0xffa347
+        : this.feedbackTime > 0 && this.feedbackKind === "tackle"
+          ? 0xc1fff1
+          : 0xfcce65,
+    );
     const separation = !menu && match.career ? Math.abs(b.z - p.z) : 0;
+    const leadX = Math.max(-4, Math.min(4, b.vx * 0.18));
+    const leadZ = Math.max(-5, Math.min(5, b.vz * 0.18));
+    const attackDirection =
+      (b.owner === null ? b.lastTeam : match.players[b.owner].team) === 0
+        ? -1
+        : 1;
     const focusX = menu
         ? 2
         : match.career
           ? b.x * 0.3 + p.x * 0.25
-          : b.x * 0.35,
-      focusZ = menu ? 0 : match.career ? b.z * 0.45 + p.z * 0.35 : b.z * 0.63,
-      lerp = 1 - Math.exp(-dt * 3.5);
-    this.look.lerp(new THREE.Vector3(focusX, 0, focusZ), lerp);
+          : b.x * 0.4 + leadX * 0.35,
+      focusZ = menu
+        ? 0
+        : match.career
+          ? b.z * 0.45 + p.z * 0.35
+          : b.z * 0.66 + leadZ * 0.3 + attackDirection * 2,
+      lerp = 1 - Math.exp(-dt * 4.8);
+    this.look.lerp(
+      this.focusTarget.set(focusX, 0, focusZ),
+      1 - Math.exp(-dt * 7),
+    );
     const portrait = this.camera.aspect < 1;
     this.camera.position.lerp(
-      new THREE.Vector3(
+      this.cameraTarget.set(
         this.look.x * 0.5 + (menu ? 21 : 0),
         portrait ? 85 : 57 + Math.min(20, separation * 0.4),
         this.look.z + (portrait ? 62 : 44 + Math.min(12, separation * 0.2)),

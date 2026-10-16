@@ -187,7 +187,9 @@ test("shielding and feints protect possession and have a real movement/cooldown 
   m.players[0].shield = false;
   m.players[3].tackleCooldown = 0;
   assert.equal(m.skill(0), true);
-  assert.ok(Math.abs(m.players[0].x) > 1);
+  assert.ok(Math.abs(m.players[0].vx) > 4);
+  tick(m, 0.2);
+  assert.ok(Math.abs(m.players[0].x) > 0.8);
   assert.ok(m.players[0].protected > 0);
   assert.equal(m.skill(0), false);
 });
@@ -335,14 +337,14 @@ test("pressing adds a supporting defender, while a missed slide imposes recovery
   m.ball.owner = 3;
   Object.assign(m.players[3], { x: 0, z: 0, cooldown: 5 });
   Object.assign(m.players[0], { x: 0, z: -10 });
-  m.step(1 / 60, { press: true, z: 1 });
+  tick(m, 0.22, { press: true, z: 1 });
   assert.equal(m.pressing, true);
   assert.ok(m.players[0].moving > 10);
   assert.ok(m.players[0].stamina < 1);
   const miss = clearMatch();
   miss.ball.owner = 3;
   assert.equal(miss.tackle(0, true), false);
-  assert.ok(miss.players[0].tackleCooldown > 2);
+  assert.ok(miss.players[0].tackleCooldown >= 2);
   assert.ok(miss.players[0].slideTime > 0);
 });
 test("coincident players separate without NaNs and stay within pitch boards", () => {

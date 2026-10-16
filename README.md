@@ -39,7 +39,7 @@ For same-network development, Vite listens on the Windows computer's network int
 | Action                            | Desktop                  | iPad / touch                                      |
 | --------------------------------- | ------------------------ | ------------------------------------------------- |
 | Move                              | WASD / arrows            | Floating left stick; touch the left movement area |
-| Sprint                            | Hold Shift               | Hold right-hand SPRINT                       |
+| Sprint                            | Hold Shift               | Hold right-hand SPRINT                            |
 | Short pass / call for a pass      | Space                    | Tap PASS                                          |
 | Through ball                      | E                        | THROUGH                                           |
 | Lobbed pass                       | L                        | Hold PASS for over 350 ms                         |
@@ -58,9 +58,19 @@ You always attack the far goal, towards the top of the screen. The gold ring and
 
 Kick Off follows possession and switches to the pass receiver. Select another outfielder with Q. **Player Career stays locked to your created player**, including when a teammate has the ball. Use PASS to call for a pass; goalkeepers always remain automatic. Position chooses your formation role. AI teammates create passing options and forward runs; defenders mark opponents and intercept loose passes. Two separation sweeps prevent coincident footballers from stacking.
 
-Short passes aim at a teammate, through balls lead a run, and lobbed passes travel on a lofted trajectory. Shots have distinct speed, loft and curve. Accuracy depends on Shooting, distance, angle, opponent pressure and power. Chip shots rise above normal shots, finesse shots curve, and overpowered shots sacrifice accuracy. First-touch error and dribbling distance improve with Passing. Shielding slows movement and makes tackles harder; a feint moves the ball carrier sideways, briefly protects possession and has a cooldown. Sliding tackles reach further and knock the ball loose, but leave recovery time if missed. Close-contact tackles remain available automatically, with an 850ms retry interval after a failed attempt and lower success than deliberate standing tackles. Shielding therefore has time to work. A user-controlled first touch has 800ms of contact protection (550ms for AI); winning a standing tackle protects possession for 750ms. Kickoffs leave opponents six metres clear and protect the starting ball carrier for 1.1 active seconds. Early attacking taps buffer for up to 350ms on the selected player, so pressing just before receiving a pass can work. Manual defender selection is retained for 1.5 seconds before automatic switching resumes. Exhausted sprint recovers to 24% stamina before sprinting again, preventing rapid speed flicker.
+Short passes aim at a teammate, through balls lead a run, and lobbed passes travel on a lofted trajectory. Shots have distinct speed, loft and curve. Accuracy depends on Shooting, distance, angle, opponent pressure and power. Chip shots rise above normal shots, finesse shots curve, and overpowered shots sacrifice accuracy. First-touch error and dribbling distance improve with Passing. Shielding slows movement and makes tackles harder; a feint moves the ball carrier sideways, briefly protects possession and has a cooldown. Sliding tackles reach further and knock the ball loose, but leave recovery time if missed. Close-contact tackles require a facing approach to the exposed ball; merely standing nearby does not retry random steals. Deliberate standing tackles have more reach. Shielding protects the back, and missed slides commit movement and recovery. A user first touch has 800ms of contact protection (550ms for AI); winning a standing tackle protects possession for 750ms. Kickoffs leave opponents six metres clear with 1.1 active seconds of protection. Early attacking taps buffer up to 350ms for the selected player; aim is sampled with the command. Manual defender selection is retained for 1.5 seconds. Exhausted sprint recovers to 24% stamina before sprinting again; normal jogging stays responsive.
 
 Matches last **120 seconds of active play** on a compact 70 × 46 pitch. Kickoffs and pauses stop the clock, including nested touch-layout and asset settings. There is one goalkeeper and five outfield players per side in a 2-2-1 formation. Keepers track shooting angles, anticipate shots, dive, catch slower balls, parry harder shots into rebounds, return to position and distribute possession, favouring open teammates. A keeper holding a catch cannot be tackled or pushed by player separation. Saves cannot cancel a ball that has already crossed the goal line. Side/end boards keep the ball in play. There are no throw-ins, corners, fouls, penalties or offsides.
+
+## Gameplay feel and difficulty
+
+Movement now accelerates and brakes with a short, responsive coast. Sprint turns cost speed; low-speed and shielding touches keep the ball close, while sprinting takes longer touches. Feints move through velocity rather than teleporting the player. The ball follows damped touches around the carrier, and rendered movement is interpolated between fixed 60 Hz simulation steps.
+
+Aim passes with the movement stick or WASD. Through balls lead a runner into an open lane; receivers anticipate the ball and Kick Off assists a selected receiver when you release movement. Direction also biases shot placement; finesse swipes explicitly choose placement. Shots and deliberate tackles reward position/timing. Goalkeepers and tackles use actual contact/reach rather than random save/steal success rolls.
+
+Settings → **Difficulty** offers Easy, Normal (default) and Hard. The preset adjusts opponent decisions, positioning, anticipation, pressure and keeper reaction rather than multiplying running speed. Changes persist and can apply during pause. AI teammates keep passing lanes, make role-specific runs and cover dangerous space. Power shots show a charge/wind-up, and tackles/goals have lightweight procedural feedback.
+
+See [the gameplay report](docs/GAMEPLAY_OVERHAUL.md) for per-file changes, before/after balance measurements, test details and limitations. Raw seeded results are in [gameplay-balance.json](docs/gameplay-balance.json). To reproduce 12 matches per preset, run `npm run balance -- 12` (add `normal` to test just that preset).
 
 ## Player career
 
@@ -116,7 +126,7 @@ npm run build
 npm run build:single
 ```
 
-The **49 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
+The **76 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
 
 Optional production-browser integration checks require Python Playwright only for testing:
 
@@ -130,11 +140,14 @@ python tests/browser_smoke.py
 python tests/browser_upgrade.py
 python tests/browser_laliga.py
 python tests/browser_mobile.py
+python tests/browser_gameplay.py
 # After npm run build:single:
 python tests/browser_single.py
 ```
 
 Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The first script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, full seasons, next season and simultaneous touch movement/sprint. The upgrade script adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, off-ball career camera framing and persistent touch layout. The La Liga script checks the 20 Spanish clubs, Korean search, actual rendered home/away patterns and shorts/socks, Spanish career opponents and refresh persistence. The mobile regression script checks six viewport/size combinations, target overlap, joystick neutrality/deadzone, a held shot across possession changes, fixed sprint placement and cancellation ownership. Fairness unit tests cover tackle retry intervals, shielding, catches under pressure, first-touch/kickoff protection, buffered/expired actions, manual switches, sprint recovery and goal-line precedence. Subpath checks can run under `/Mini-FC/` using a static server with `dist` mounted there.
+
+The gameplay browser script adds difficulty persistence and live changes, velocity acceleration/braking, directional input sampling, simultaneous movement and charged aiming, brush rejection, real pointer ownership and orientation pause.
 
 Time and selected season scores are accelerated through the explicit `?test=1` harness. Goal detection and input actions still use the simulation. Some isolated input fixtures freeze AI to prevent an opponent stealing the ball during a touch-gesture assertion. No test global is exposed during normal play.
 

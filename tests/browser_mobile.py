@@ -27,6 +27,7 @@ with sync_playwright() as p:
         page.set_viewport_size({'width':width,'height':height})
         page.evaluate(f'document.documentElement.style.setProperty("--control-size", "{scale/100}")')
         page.wait_for_timeout(80)
+        if page.evaluate('__miniFC.mode === "pause"'): page.click('#resume')
         boxes = page.evaluate('''() => [...document.querySelectorAll('#touch-controls button')]
           .filter(b=>!b.hidden).map(b=>{const r=b.getBoundingClientRect();return {id:b.id,x:r.x,y:r.y,w:r.width,h:r.height}})''')
         for b in boxes:
@@ -43,6 +44,8 @@ with sync_playwright() as p:
         layouts.append([width,height,scale])
     page.set_viewport_size({'width':1024,'height':768})
     page.evaluate('document.documentElement.style.setProperty("--control-size", "1")')
+    page.wait_for_timeout(100)
+    if page.evaluate('__miniFC.mode === "pause"'): page.click('#resume')
     session = context.new_cdp_session(page)
     def touch(kind, points):
         session.send('Input.dispatchTouchEvent', {'type':kind,'touchPoints':[{'id':i,'x':x,'y':y} for i,x,y in points]})
