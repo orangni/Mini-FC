@@ -16,7 +16,7 @@ with sync_playwright() as p:
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
     page.on('console', lambda m: errors.append(m.text) if m.type == 'error' else None)
-    page.goto(URL + '?test=1'); page.click('#settings'); page.select_option('#controls', 'advanced'); page.click('#back'); page.click('#play'); page.click('#kickoff')
+    page.goto(URL + '?test=1'); page.click('#play'); page.click('#kickoff')
     page.evaluate('''() => {
       const m=__miniFC.match; m.kickoffWait=0; m.ai=()=>{};
       m.players.forEach((p,i)=>Object.assign(p,{x:i%2?20:-20,z:20,cooldown:10,protected:0}));

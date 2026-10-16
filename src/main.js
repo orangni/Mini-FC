@@ -45,7 +45,7 @@ const bounded = (v, lo, hi, fall) =>
 let settings = {
   quality: "high",
   difficulty: "normal",
-  controls: "simple",
+  controls: "balanced",
   sound: true,
   touch: "auto",
   touchSize: 100,
@@ -64,7 +64,7 @@ try {
       touchInset: bounded(saved.touchInset, 12, 80, 24),
       home: getClub(saved.home || "arsenal").id,
       away: getClub(saved.away || "chelsea").id,
-      controls: saved.controls === "advanced" ? "advanced" : "simple",
+      controls: saved.controls === "advanced" ? "advanced" : "balanced",
       difficulty: ["easy", "normal", "hard"].includes(saved.difficulty)
         ? saved.difficulty
         : "normal",
@@ -117,15 +117,8 @@ function saveSettings() {
   }
 }
 function applyTouch() {
-  input.simple = settings.controls === "simple";
-  document.body.classList.toggle("simple-controls", input.simple);
-  match.assisted = input.simple;
-  $("#pass-button small").textContent = input.simple
-    ? "TAP TO PASS"
-    : "HOLD: LOB";
-  $("#shoot-button small").textContent = input.simple
-    ? "AUTO AIM"
-    : "HOLD: POWER";
+  input.assisted = settings.controls === "balanced";
+  match.assisted = input.assisted;
   document.documentElement.style.setProperty(
     "--control-size",
     settings.touchSize / 100,
@@ -453,7 +446,7 @@ function upgradeMenu() {
 function settingsMenu(from) {
   mode = "settings";
   shell(
-    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Controls</b><small>Simple: immediate actions, assisted aiming and quick stopping.</small></div><select id="controls"><option value="simple">Simple · recommended</option><option value="advanced">Advanced · all techniques</option></select></div><div class="setting-row"><div><b>Difficulty</b><small>Decisions, positioning and keeper reactions. Applies immediately.</small></div><select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div><div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p>${settings.controls === "simple" ? "<b>WASD / ARROWS</b> Move <b>SPACE / Z</b> Pass or tackle <b>J / X</b> Shoot or hold to defend <b>SHIFT</b> Optional sprint. A green ring marks the pass receiver." : "<b>WASD</b> Move <b>SHIFT</b> Sprint <b>SPACE</b> Pass <b>J</b> Hold / release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Skill <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Press <b>Q</b> Switch"}</p><p>Simple controls use instant PASS/SHOOT with goal aiming assistance. Space/Z passes or tackles; J/X shoots or holds to defend. Only move and two action buttons are needed; sprint is optional. Choose Advanced for charged shots and all techniques. On iPad, touch anywhere in the left movement area to place the floating stick. SPRINT sits between PASS and SHOOT on the right. In Advanced, aim passes and shots with the movement stick. Hold SHOOT for power; swipe it up for a chip or sideways for finesse. Hold PASS to lob. Hold SKILL to shield. Controls change when possession changes.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
+    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Controls</b><small>Full techniques in both modes. Balanced adds light aiming and movement assistance.</small></div><select id="controls"><option value="balanced">Balanced · full techniques</option><option value="advanced">Manual · full techniques</option></select></div><div class="setting-row"><div><b>Difficulty</b><small>Decisions, positioning and keeper reactions. Applies immediately.</small></div><select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div><div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p><b>WASD / ARROWS</b> Move <b>SHIFT</b> Sprint <b>SPACE / Z</b> Pass <b>J</b> Tap / hold and release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Feint <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Hold to press <b>Q</b> Switch</p><p>Balanced keeps every technique with light goal aiming assistance, responsive movement and a green pass receiver ring. Manual gives full directional aim and heavier momentum. On iPad, touch the left movement area for the floating stick. Tap PASS for a short pass or hold to lob; THROUGH leads a run. Tap SHOOT for a normal shot, hold for power, swipe up to chip or sideways for finesse. CHIP is also available directly. Tap SKILL to feint, hold to shield. Aim passes with movement. Hold PRESS to close down; your movement overrides the assisted chase. SPRINT is optional and stays in a fixed slot.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
   );
   bind("touch-layout", () => touchLayoutMenu(from));
   bind("local-assets", () => assetsMenu(() => settingsMenu(from)));
@@ -531,7 +524,7 @@ function startMatch(isCareer) {
     position: isCareer ? career.position : "Striker",
     teams: [home, away],
     difficulty: settings.difficulty,
-    assisted: settings.controls === "simple",
+    assisted: settings.controls === "balanced",
   });
   const kits = selectKits(home, away);
   document.documentElement.style.setProperty(
@@ -600,9 +593,8 @@ function updateHUD() {
   );
   const charge = input.charge();
   match.passAim = input.direction();
-  $("#desktop-help").textContent = input.simple
-    ? "WASD / ARROWS MOVE · SPACE / Z PASS OR TACKLE · J / X SHOOT OR HOLD TO DEFEND · SHIFT OPTIONAL SPRINT"
-    : "WASD MOVE · SHIFT SPRINT · SPACE PASS · J HOLD / RELEASE SHOOT · ESC PAUSE";
+  $("#desktop-help").textContent =
+    "WASD MOVE · SPACE PASS · J TAP / HOLD SHOT · E THROUGH · C FEINT · V SHIELD · P PRESS · ESC PAUSE";
   $("#shot-power").classList.toggle("charging", charge > 0);
   $("#shot-power>span").style.width = `${charge * 100}%`;
   $("#shot-power small").textContent =

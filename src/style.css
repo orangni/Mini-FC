@@ -1865,20 +1865,3 @@ button[hidden] {
     margin-bottom: 8px;
   }
 }
-
-/* Simple mode keeps the two action targets in the same thumb positions on both phases. */
-.simple-controls #touch-controls #through-button,
-.simple-controls #touch-controls #chip-button,
-.simple-controls #touch-controls #skill-button,
-.simple-controls #touch-controls #slide-button,
-.simple-controls #touch-controls #switch-button {
-  display: none !important;
-}
-.simple-controls #touch-controls #press-button {
-  grid-column: 3;
-  grid-row: 2;
-}
-.simple-controls #touch-controls .action-buttons {
-  grid-template-rows: 0 var(--touch-cell);
-  row-gap: 0;
-}

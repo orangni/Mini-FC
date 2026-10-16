@@ -14,7 +14,7 @@ with sync_playwright() as p:
  page.on('pageerror',lambda e:errors.append(str(e)))
  page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)
  page.on('response',lambda r:failed.append(f'{r.status} {r.url}') if r.status>=400 else None)
- page.goto(URL+'?test=1');page.click('#settings');page.select_option('#controls','advanced');page.click('#back');page.click('#play')
+ page.goto(URL+'?test=1');page.click('#play')
  page.select_option('#league-filter','BL');assert page.locator('[data-club]').count()==9
  page.select_option('#league-filter','PL');page.fill('#club-search','coventry');assert page.locator('[data-club]').count()==1
  page.click('[data-club="coventry"]');page.fill('#club-search','arsenal');page.click('[data-club="arsenal"]')

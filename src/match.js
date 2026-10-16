@@ -28,11 +28,11 @@ export const DIFFICULTIES = Object.freeze({
     keeperReaction: 0.24,
   },
   normal: {
-    reaction: 0.34,
+    reaction: 0.38,
     positioning: 0.9,
-    anticipation: 0.28,
-    pressure: 0.65,
-    keeperReaction: 0.16,
+    anticipation: 0.25,
+    pressure: 0.8,
+    keeperReaction: 0.18,
   },
   hard: {
     reaction: 0.19,
@@ -453,31 +453,28 @@ export class Match {
       (type === "power" ? Math.max(0, power - 0.65) * 4 : 0);
     if (type === "finesse") spread *= 0.65;
     if (type === "chip") spread *= 1.15;
-    if (user && this.assisted) spread *= 0.75;
+    if (user && this.assisted) spread *= 0.9;
     const keeper = this.players[TEAM_IDS[1 - p.team][5]];
-    // Movement chooses positioning in Simple mode; deliberate swipe placement still wins.
-    const direction = user && this.assisted ? null : options.direction;
+    const direction = options.direction;
     const directional =
       direction && Math.hypot(direction.x || 0, direction.z || 0) > 0.15;
+    const automaticPlacement =
+      Math.abs(p.x) < 3 ? (keeper.x >= 0 ? -2.6 : 2.6) : -Math.sign(p.x) * 2.6;
+    const directedPlacement =
+      directional && Math.abs(direction.x) > 0.15
+        ? clamp(
+            direction.x / Math.max(0.65, Math.hypot(direction.x, direction.z)),
+            -1,
+            1,
+          ) * 4.1
+        : automaticPlacement;
+    // Balanced retains directional intent; explicit finesse placement is never blended.
     const placement =
       options.aimX !== undefined
         ? clamp(options.aimX, -4.3, 4.3)
         : user && this.assisted
-          ? keeper.x >= 0
-            ? -3.5
-            : 3.5
-          : directional && Math.abs(direction.x) > 0.15
-            ? clamp(
-                direction.x /
-                  Math.max(0.65, Math.hypot(direction.x, direction.z)),
-                -1,
-                1,
-              ) * 4.1
-            : Math.abs(p.x) < 3
-              ? keeper.x >= 0
-                ? -2.6
-                : 2.6
-              : -Math.sign(p.x) * 2.6;
+          ? directedPlacement * 0.65 + automaticPlacement * 0.35
+          : directedPlacement;
     const targetX = clamp(
       placement + (this.random() - 0.5) * spread * 2,
       -7.5,
@@ -605,7 +602,7 @@ export class Match {
       owner.protected = 0;
     }
     p.cooldown = 0.55;
-    p.protected = 0.75;
+    p.protected = this.isUser(p) ? 0.85 : 0.75;
     p.possessionTime = 0;
     if (slide) {
       const { x, z } = b;
@@ -667,11 +664,13 @@ export class Match {
     let speed =
       (5.6 + pace * 0.052) *
       Math.min(mag, 1) *
-      (running ? (assist ? 1.35 : 1.5) * (0.94 + p.stamina * 0.06) : 1);
+      (running ? (assist ? 1.42 : 1.5) * (0.94 + p.stamina * 0.06) : 1);
     const velocity = Math.hypot(p.vx, p.vz);
-    if (running && velocity > 1 && !assist) {
+    if (running && velocity > 1) {
       const alignment = (p.vx * d.x + p.vz * d.z) / velocity;
-      speed *= clamp(0.5 + (alignment + 1) * 0.25, 0.5, 1);
+      speed *= assist
+        ? clamp(0.78 + (alignment + 1) * 0.11, 0.78, 1)
+        : clamp(0.5 + (alignment + 1) * 0.25, 0.5, 1);
     }
     if (p.shield && this.ball.owner === p.id) speed *= 0.62;
     if (p.recovery > 0 && p.slideTime <= 0) speed *= 0.48;
@@ -681,8 +680,8 @@ export class Match {
     const change = Math.hypot(vx - p.vx, vz - p.vz);
     const acceleration = assist
       ? mag > 0.05
-        ? 110 + pace * 0.2
-        : 125
+        ? 90 + pace * 0.25
+        : 100
       : mag > 0.05
         ? 58 + pace * 0.35
         : 54;
@@ -701,7 +700,7 @@ export class Match {
       const angle = turnAngle(
         Math.atan2(p.dx, p.dz),
         Math.atan2(d.x, d.z),
-        dt * (assist ? 22 : running ? 7.5 : 16),
+        dt * (assist ? 18 : running ? 7.5 : 16),
       );
       p.dx = Math.sin(angle);
       p.dz = Math.cos(angle);
@@ -733,16 +732,16 @@ export class Match {
     b.orbit = turnAngle(
       b.orbit,
       heading,
-      dt * (assist ? 18 : p.shield ? 12 : 9),
+      dt * (assist ? 14 : p.shield ? 12 : 9),
     );
     p.touchPhase += dt * p.moving * 1.7;
-    const touch = (assist ? 0.05 : 0.12) * (1 - Math.cos(p.touchPhase));
+    const touch = (assist ? 0.08 : 0.12) * (1 - Math.cos(p.touchPhase));
     const offset = p.shield
       ? 0.72
       : 0.74 +
         Math.min(1, p.moving / 13) *
           (assist
-            ? 0.24
+            ? 0.34
             : 0.5 + (100 - this.attributesFor(p).passing) * 0.003) +
         touch;
     const tx = p.x + Math.sin(b.orbit) * offset,
@@ -1170,7 +1169,7 @@ export class Match {
     p.action = "touch";
     p.actionTime = 0.25;
     p.cooldown = 0.2 + (100 - control) * 0.002;
-    p.protected = Math.max(p.protected, this.isUser(p) ? 0.8 : 0.55);
+    p.protected = Math.max(p.protected, this.isUser(p) ? 0.9 : 0.55);
     b.owner = p.id;
     b.followOwner = null;
     p.possessionTime = 0;
