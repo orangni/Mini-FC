@@ -80,9 +80,17 @@ Settings → **Difficulty** offers Easy, Normal (default) and Hard. The preset a
 
 See [the gameplay report](docs/GAMEPLAY_OVERHAUL.md) for per-file changes, before/after balance measurements, test details and limitations. Raw seeded results are in [gameplay-balance.json](docs/gameplay-balance.json). To reproduce 12 matches per preset, run `npm run balance -- 12` (add `normal` to test just that preset).
 
+## Language and shooting
+
+Settings → **Language** switches between **English** and **한국어**. Menus, career creation, all sixteen skill names/descriptions, controls, HUD, pause/roster, training and results use the selected language. The initial choice follows the browser language; the setting persists. Switching while paused keeps the match, timer, player and save intact. Club proper names and user-created names retain their original spelling. Position option values and save IDs remain language-independent.
+
+Normal and finesse shots now keep speed through their flight and aim towards viable corners. Chip flight accounts for air drag; chips are useful against a stranded keeper, while a keeper near the line can claim high balls. A dive starts with a limited reach and extends over its animation, rather than instantly covering its maximum radius; a dive cannot instantly reverse direction. Full power retains speed but also its accuracy cost.
+
+In a repeatable isolated box fixture, normal goals increased from **0/60 to 18/60** and finesse from **0/60 to 20/60**. Against a keeper seven metres off the goal line, chip goals increased from **0/60 to 53/60**; that chip fixture against a line keeper remains defendable. Max power is still useful and can miss. These are fixed automated shot scenarios, not real-player conversion rates. Full conditions and before/after rows are in [shot-balance.json](docs/shot-balance.json); reproduce with `node tools/shot-balance.mjs`.
+
 ## Player signatures
 
-Every footballer has exactly one innate signature. Club and lineup slot determine a stable assignment, including AI teammates and opponents. The five outfielders in a Kick Off team have different moves; a custom career choice can share a teammate's type. These are six shared move types, not unique licensed real-player animations.
+Every footballer has exactly one innate signature. Club and lineup slot determine a stable assignment, including AI teammates and opponents. The five outfielders in a Kick Off team have different moves; a custom career choice can share a teammate's type. These are sixteen shared move types, not unique licensed real-player animations.
 
 | Signature                | Move                                                |
 | ------------------------ | --------------------------------------------------- |
@@ -93,15 +101,17 @@ Every footballer has exactly one innate signature. Club and lineup slot determin
 | Heel to heel / 힐 투 힐  | Short back touch followed by forward acceleration   |
 | Drag back / 드래그 백    | Pull back from pressure, then exit sideways         |
 
+The additional ten moves are Elastico, Reverse elastico, La croqueta, Ball roll, Heel chop, McGeady spin, Drag and push, Stop and go, Scoop turn and V drag. Each has a different integrated movement/ball profile and procedural pose; all sixteen can be chosen at career creation and assigned to AI players.
+
 Choose your captain's signature when creating a career. The preview explains its movement and cooldown; the choice persists through matches, upgrades, seasons and refresh. Existing v1/v2 saves receive Body feint without losing attributes, XP or records. The save key and schema version remain compatible.
 
-Use **C** on PC or **tap SKILL** on touch to perform your player's move, with left/right input choosing the side. Holding V / SKILL still shields, including during a signature cooldown. Moves have distinct player motion, ball paths and procedural body/foot animations. Each costs 8% stamina and has a 2.8–3.6 second cooldown. They respect possession, recovery, field bounds and interruption on losing the ball. Shots and pass techniques remain available to all outfielders.
+Use **C** on PC or **tap SKILL** on touch to perform your player's move, with left/right input choosing the side. Holding V / SKILL still shields, including during a signature cooldown. Moves have distinct player motion, ball paths and procedural body/foot animations. Each costs 8% stamina and has a 2.8–3.8 second cooldown. They respect possession, recovery, field bounds and interruption on losing the ball. Shots and pass techniques remain available to all outfielders.
 
 The HUD shows your signature and cooldown. **Pause → Player Skills** lists all twelve players and their effects while the match stays paused. AI uses its own move only under close frontal pressure with no clear passing option, with an extra two seconds of cooldown. Goalkeepers have an automatic Safe hands trait (catch threshold 25 instead of 24m/s) or Quick release (distribution after 0.75 instead of 0.85 seconds). Caught keeper possession remains protected.
 
 ## Player career
 
-- Create a named captain, choose Striker, Midfielder or Defender, a starting club and one of six signature moves. Mini FC retains the original neighbourhood career. Position determines the formation slot without restricting free movement or techniques.
+- Create a named captain, choose Striker, Midfielder or Defender, a starting club and one of sixteen signature moves. Mini FC retains the original neighbourhood career. Position determines the formation slot without restricting free movement or techniques.
 - Start at **60 overall**. Pace improves movement; Shooting improves shot speed and accuracy; Passing improves passes, dribbling distance and first-touch control. Upgrades affect your own footballer; AI teammates use their club ratings.
 - Earn **60 XP** per completed match, **80 XP** per win, **30 XP** per draw and **40 XP** per goal from your own shot. AI teammate goals help the team score, without counting as personal goals.
 - Every **100 cumulative XP** earns one point. One point buys **+3** to an attribute, capped at 99. Overall is the mean of the three attributes.
@@ -153,7 +163,7 @@ npm run build
 npm run build:single
 ```
 
-The **98 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
+The **102 Node tests** retain all original scenarios, with the player-count expectation and pass fixture updated for 6v6. Added coverage includes keeper catches/parries/distribution/positioning, shot trajectories and accuracy, all pass types, tackle recovery, shielding, feints, pressing, first touch, assists, captain control, role/attribute ownership, exact 70-club membership and kit clashes across every club pair, league opponents, save migration and the v1 recovery backup.
 
 Optional production-browser integration checks require Python Playwright only for testing:
 
@@ -163,6 +173,7 @@ python -m playwright install chromium
 npm run build
 npm run preview -- --port 4173
 # In a second terminal:
+python tests/browser_language.py
 python tests/browser_signatures.py
 python tests/browser_balanced.py
 python tests/browser_smoke.py
@@ -174,7 +185,7 @@ python tests/browser_gameplay.py
 python tests/browser_single.py
 ```
 
-Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The signature script checks all six creation options, selected-skill persistence/restart, keyboard dispatch, six distinct rendered poses, touch shielding/cancellation, the paused twelve-player roster, old-save XP/attribute preservation and PC-specific charge help. The Balanced script checks default/legacy settings, full keyboard techniques, shot charging/release, shielding, pass previews, six-button layouts, simultaneous movement/finesse touches, assisted defending, slide input, career lock and persistent control preferences. The added simulation checks cover assisted directional placement, retained techniques, momentum and the small first-touch window. The smoke script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, full seasons, next season and simultaneous touch movement/sprint. The upgrade script runs in default Balanced and adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, a close ball-centered career camera without distance-driven zoom-out and persistent touch layout. The La Liga script checks the 20 Spanish clubs, Korean search, actual rendered home/away patterns and shorts/socks, Spanish career opponents and refresh persistence. The mobile regression script also uses default Balanced and checks six viewport/size combinations, target overlap, joystick neutrality/deadzone, a held shot across possession changes, fixed sprint placement and cancellation ownership. Fairness unit tests cover tackle retry intervals, shielding, catches under pressure, first-touch/kickoff protection, buffered/expired actions, manual switches, sprint recovery and goal-line precedence. Subpath checks can run under `/Mini-FC/` using a static server with `dist` mounted there.
+Set `MINI_FC_BROWSER` to an existing Chromium executable, `MINI_FC_URL` for another server URL including the trailing slash, and `MINI_FC_ARTIFACTS` for screenshots. The language script checks both languages across menus/roster/results, sixteen choices, pause-time preservation, language persistence, canonical form values, untouched player names and career upgrades. The signature script checks all sixteen creation options, selected-skill persistence/restart, keyboard dispatch, sixteen distinct rendered poses, touch shielding/cancellation, the paused twelve-player roster, old-save XP/attribute preservation and PC-specific charge help. The Balanced script checks default/legacy settings, full keyboard techniques, shot charging/release, shielding, pass previews, six-button layouts, simultaneous movement/finesse touches, assisted defending, slide input, career lock and persistent control preferences. The added simulation checks cover assisted directional placement, retained techniques, momentum and the small first-touch window. The smoke script checks keyboard play, goals, pause/resume/restart, results, career XP/upgrades/refresh, full seasons, next season and simultaneous touch movement/sprint. The upgrade script runs in default Balanced and adds search/filtering, alternate kits, local image inputs, charge/swipe shots, lob/through/chip/skill controls, a floating multi-touch stick, contextual tackling, captain lock, a close ball-centered career camera without distance-driven zoom-out and persistent touch layout. The La Liga script checks the 20 Spanish clubs, Korean search, actual rendered home/away patterns and shorts/socks, Spanish career opponents and refresh persistence. The mobile regression script also uses default Balanced and checks six viewport/size combinations, target overlap, joystick neutrality/deadzone, a held shot across possession changes, fixed sprint placement and cancellation ownership. Fairness unit tests cover tackle retry intervals, shielding, catches under pressure, first-touch/kickoff protection, buffered/expired actions, manual switches, sprint recovery and goal-line precedence. Subpath checks can run under `/Mini-FC/` using a static server with `dist` mounted there.
 
 The gameplay browser script adds difficulty persistence and live changes, velocity acceleration/braking, directional input sampling, simultaneous movement and charged aiming, brush rejection, real pointer ownership and orientation pause.
 
@@ -186,6 +197,7 @@ Time and selected season scores are accelerated through the explicit `?test=1` h
 - `src/render.js` — procedural pitch, stadium, kits, footballers, animations and camera
 - `src/input.js` — keyboard, multi-touch, charge and directional shot gestures
 - `src/clubs.js` — supplied club roster, kit definitions, search and colour conflict selection
+- `src/i18n.js` — separate English/Korean UI copy and safe text/attribute localization
 - `src/skills.js` — signature catalog, stable player assignments and distinct motion profiles
 - `src/career.js` — progression, fixtures, stats, upgrades and save migration
 - `src/main.js` — menus, match lifecycle, local asset inputs, audio and settings

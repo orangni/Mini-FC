@@ -121,7 +121,7 @@ test("old v1/v2 and invalid skill values retain careers with a safe default", ()
   saveCareer(s, loaded);
   assert.equal(JSON.parse(s.getItem(SAVE_KEY + "-backup-v1")).version, 1);
 });
-test("six signatures have different integrated player/ball trajectories and expire normally", () => {
+test("sixteen signatures have different integrated player/ball trajectories and expire normally", () => {
   const trajectories = [];
   for (const skill of OUTFIELD_SKILLS) {
     const m = isolated(skill.id),
@@ -142,7 +142,7 @@ test("six signatures have different integrated player/ball trajectories and expi
     assert.equal(m.controlled, 0);
     assert.equal(m.ball.owner, 0);
   }
-  assert.equal(new Set(trajectories).size, 6);
+  assert.equal(new Set(trajectories).size, 16);
 });
 test("drag back starts backwards, heel burst accelerates forwards, and side input mirrors feints", () => {
   const drag = isolated("drag-back"),

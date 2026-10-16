@@ -4,7 +4,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright,expect
 URL=os.environ.get('MINI_FC_URL','http://127.0.0.1:4173/')
 ARTIFACTS=Path(os.environ.get('MINI_FC_ARTIFACTS','playwright-results'));ARTIFACTS.mkdir(parents=True,exist_ok=True)
-SKILLS=['body-feint','step-over','roulette','double-touch','heel-burst','drag-back']
+SKILLS=['body-feint','step-over','roulette','double-touch','heel-burst','drag-back','elastico','reverse-elastico','la-croqueta','ball-roll','heel-chop','mcgeady-spin','drag-push','stop-go','scoop-turn','v-drag']
 PREPARE="""() => {
  const m=__miniFC.match;m.ai=()=>{};m.kickoffWait=0;m.queuedAction=null;m.random=()=>.5;
  m.players.forEach((p,i)=>Object.assign(p,{x:p.team?20:-20,z:20+i*.5,protected:0,cooldown:0,stunned:0,vx:0,vz:0,skillCooldown:0,skillTime:0,feintTime:0,recovery:0,slideTime:0,stamina:1}));
@@ -35,19 +35,19 @@ with sync_playwright() as p:
  page.on('pageerror',lambda e:errors.append(str(e)))
  page.on('console',lambda m:errors.append(m.text) if m.type=='error' else None)
  page.goto(URL+'?test=1');page.click('#career');page.fill('#player-name','Spin Captain')
- assert page.locator('#signature-skill option').count()==6
+ assert page.locator('#signature-skill option').count()==16
  for skill in SKILLS:
   page.select_option('#signature-skill',skill)
   assert page.locator('#skill-preview b').inner_text()
   assert 'PC: C' in page.locator('#skill-preview').inner_text()
  page.select_option('#signature-skill','roulette');page.screenshot(path=str(ARTIFACTS/'choose-signature.png'))
  page.click('#create-career');assert page.evaluate('__miniFC.career.skillId')=='roulette'
- expect(page.locator('.career-signature')).to_contain_text('룰렛')
+ expect(page.locator('.career-signature')).to_contain_text('Roulette')
  page.reload();page.click('#career');assert page.evaluate('__miniFC.career.skillId')=='roulette'
  page.click('#fixture');assert page.evaluate('__miniFC.match.players[0].skillId')=='roulette'
  def prepare():
   page.evaluate(PREPARE);page.wait_for_function('!document.querySelector("#skill-button").hidden')
- # The same C key dispatches all six profiles; rendered body/foot poses differ.
+ # The same C key dispatches all sixteen profiles; rendered body/foot poses differ.
  poses=[]
  for skill in SKILLS:
   prepare();page.evaluate('(id)=>__miniFC.match.players[0].skillId=id',skill);page.keyboard.press('KeyC')
@@ -61,7 +61,7 @@ with sync_playwright() as p:
   expect(page.locator('#skill-button small')).to_contain_text('SKILL')
   page.keyboard.press('KeyC');page.wait_for_timeout(70)
   assert page.evaluate('__miniFC.match.signatureUses.length')==1
- assert len({tuple(round(n,2) for n in pose) for pose in poses})==6,poses
+ assert len({tuple(round(n,2) for n in pose) for pose in poses})==16,poses
  # Native simultaneous touches: hold shielding during cooldown still works.
  cdp=context.new_cdp_session(page)
  def touch(kind,points):cdp.send('Input.dispatchTouchEvent',{'type':kind,'touchPoints':[{'id':i,'x':x,'y':y} for i,x,y in points]})
@@ -97,5 +97,5 @@ with sync_playwright() as p:
  assert 'SWIPE' not in pc.locator('#shot-power small').inner_text()
  pc.keyboard.up('KeyJ')
  assert not errors,errors
- print(json.dumps({'result':'PASS','signature':'six choices/previews, creation/reload/restart, C profile dispatch, six rendered poses, cooldowns, multitouch shielding/cancel, twelve-player paused roster, old-save XP/attributes, desktop key help','javascript_errors':errors}))
+ print(json.dumps({'result':'PASS','signature':'sixteen choices/previews, creation/reload/restart, C profile dispatch, sixteen rendered poses, cooldowns, multitouch shielding/cancel, twelve-player paused roster, old-save XP/attributes, desktop key help','javascript_errors':errors}))
  browser.close()

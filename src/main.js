@@ -2,7 +2,12 @@ import "./style.css";
 import { Renderer } from "./render.js";
 import { Match, MATCH_SECONDS } from "./match.js";
 import { Input } from "./input.js";
-import { OUTFIELD_SKILLS, getSkill } from "./skills.js";
+import {
+  OUTFIELD_SKILLS,
+  getSkill,
+  skillLabel,
+  skillDescription,
+} from "./skills.js";
 import {
   CLUB_DATABASE,
   LEGACY_CLUBS,
@@ -22,6 +27,8 @@ import {
   upgrade,
   nextSeason,
 } from "./career.js";
+
+import { translateText, localize } from "./i18n.js";
 
 const $ = (selector) => document.querySelector(selector);
 const screen = $("#screen"),
@@ -47,6 +54,7 @@ let settings = {
   quality: "high",
   difficulty: "normal",
   controls: "balanced",
+  language: navigator.language?.startsWith("ko") ? "ko" : "en",
   sound: true,
   touch: "auto",
   touchSize: 100,
@@ -66,6 +74,9 @@ try {
       home: getClub(saved.home || "arsenal").id,
       away: getClub(saved.away || "chelsea").id,
       controls: saved.controls === "advanced" ? "advanced" : "balanced",
+      language: ["en", "ko"].includes(saved.language)
+        ? saved.language
+        : settings.language,
       difficulty: ["easy", "normal", "hard"].includes(saved.difficulty)
         ? saved.difficulty
         : "normal",
@@ -76,12 +87,16 @@ try {
 } catch {
   /* Defaults remain usable when storage is unavailable. */
 }
+const t = (text) => translateText(text, settings.language);
+const skillName = (skill) => skillLabel(skill, settings.language);
+const skillInfo = (skill) => skillDescription(skill, settings.language);
 let renderer;
 try {
   renderer = new Renderer($("#game"), settings.quality);
 } catch {
   screen.innerHTML =
     '<section class="panel"><span class="eyebrow">MINI FC</span><h1>A pitch needs a little power.</h1><p>WebGL could not start. Enable hardware acceleration, close other tabs, then reload Safari or your desktop browser.</p><button onclick="location.reload()">TRY AGAIN</button></section>';
+  localize(screen, settings.language);
   throw new Error("WebGL is unavailable.");
 }
 let mode = "main",
@@ -93,7 +108,7 @@ let announcementUntil = 0,
   audio;
 const input = new Input((force) => pause(force));
 function toast(message) {
-  $("#toast").textContent = message;
+  $("#toast").textContent = t(message);
   $("#toast").classList.add("visible");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => $("#toast").classList.remove("visible"), 4500);
@@ -117,7 +132,35 @@ function saveSettings() {
     toast("Settings cannot be saved in this browser.");
   }
 }
+function applyLanguage() {
+  document.documentElement.lang = settings.language;
+  document.body.dataset.language = settings.language;
+  for (const [id, label] of Object.entries({
+    "sprint-button": "SPRINT",
+    "pass-button": "PASS",
+    "shoot-button": "SHOOT",
+    "through-button": "THROUGH",
+    "chip-button": "CHIP",
+    "skill-button": "SKILL",
+    "tackle-button": "TACKLE",
+    "slide-button": "SLIDE",
+    "press-button": "PRESS",
+    "switch-button": "SWITCH",
+  }))
+    $("#" + id).firstChild.textContent = t(label);
+  $("#pass-button small").textContent = t("HOLD: LOB");
+  $("#shoot-button small").textContent = t("HOLD: POWER");
+  $("#match-hint>span:first-child").textContent = t("ATTACK ↑");
+  $("#pause").setAttribute("aria-label", t("Pause match"));
+  $("#joystick").setAttribute("aria-label", t("Floating movement joystick"));
+  $("#game").setAttribute("aria-label", t("Mini FC football pitch"));
+  document.title =
+    settings.language === "ko"
+      ? "Mini FC — 작은 경기장, 커다란 순간."
+      : "Mini FC — Small pitch. Big moments.";
+}
 function applyTouch() {
+  applyLanguage();
   input.assisted = settings.controls === "balanced";
   match.assisted = input.assisted;
   document.documentElement.style.setProperty(
@@ -176,6 +219,7 @@ function shell(content, wide = false) {
       "←",
       '<svg class="arrow-icon back-arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m7-7-7 7 7 7"/></svg>',
     );
+  localize(screen, settings.language);
   input.active = false;
   input.reset();
 }
@@ -262,6 +306,7 @@ function kickoffMenu() {
             `<button data-club="${c.id}">${crest(c)}<span><b>${escapeHTML(c.name)}</b><small>${LEAGUES[c.league]} · ${c.formation}</small></span></button>`,
         )
         .join("") || "<p>No matching clubs.</p>";
+    localize(screen, settings.language);
     document.querySelectorAll("[data-club]").forEach(
       (b) =>
         (b.onclick = () => {
@@ -369,12 +414,12 @@ function createMenu() {
       )
       .join(
         "",
-      )}</select><label for="signature-skill">고유 개인기 / SIGNATURE SKILL</label><select id="signature-skill">${OUTFIELD_SKILLS.map((s) => `<option value="${s.id}">${s.name} · ${s.label}</option>`).join("")}</select><div id="skill-preview" class="signature-card" aria-live="polite"></div><p class="fine">You control only your created footballer. Position sets your formation role. Use PASS to call for the ball when a teammate has it.</p>${button("create-career", "SIGN FOR MINI FC ↗", "primary")}</form>${button("back", "← MAIN MENU", "subtle")}</section>`,
+      )}</select><label for="signature-skill">SIGNATURE SKILL</label><select id="signature-skill">${OUTFIELD_SKILLS.map((s) => `<option value="${s.id}">${skillName(s)}</option>`).join("")}</select><div id="skill-preview" class="signature-card" aria-live="polite"></div><p class="fine">You control only your created footballer. Position sets your formation role. Use PASS to call for the ball when a teammate has it.</p>${button("create-career", "SIGN FOR MINI FC ↗", "primary")}</form>${button("back", "← MAIN MENU", "subtle")}</section>`,
   );
   const previewSkill = () => {
     const s = getSkill($("#signature-skill").value);
     $("#skill-preview").innerHTML =
-      `<b>${s.name} · ${s.label}</b><p>${s.description}</p><small>PC: C · TOUCH: tap SKILL · ${s.cooldown}s cooldown · Hold V / SKILL to shield.</small>`;
+      `<b>${skillName(s)}</b><p>${skillInfo(s)}</p><small>${t(`PC: C · TOUCH: tap SKILL · ${s.cooldown}s cooldown · Hold V / SKILL to shield.`)}</small>`;
   };
   $("#signature-skill").onchange = previewSkill;
   previewSkill();
@@ -405,7 +450,7 @@ function careerMenu() {
     rank = table.findIndex((r) => r.name === c.table[0].name) + 1;
   const clubName = escapeHTML(c.table[0].name);
   shell(
-    `<section class="career-layout"><header class="page-heading"><div>${header(`PLAYER CAREER / SEASON ${c.season}`, "The next chapter.", "Build your player. Bring the title home.")}</div>${button("back", "← MAIN MENU", "subtle")}</header><div class="career-grid"><article class="player-card"><div class="player-card-top"><b>${overall(c)}<small>OVR</small></b><span>${escapeHTML(c.position.toUpperCase())}</span></div>${shirt(c.clubId)}<h2>${escapeHTML(c.name)}</h2><span class="eyebrow">${clubName} · CAPTAIN</span><div class="signature-card career-signature"><small>고유 개인기 / SIGNATURE</small><b>${getSkill(c.skillId).name}</b><p>${getSkill(c.skillId).description}</p></div><div class="attributes">${Object.entries(
+    `<section class="career-layout"><header class="page-heading"><div>${header(`PLAYER CAREER / SEASON ${c.season}`, "The next chapter.", "Build your player. Bring the title home.")}</div>${button("back", "← MAIN MENU", "subtle")}</header><div class="career-grid"><article class="player-card"><div class="player-card-top"><b>${overall(c)}<small>OVR</small></b><span>${escapeHTML(c.position.toUpperCase())}</span></div>${shirt(c.clubId)}<h2>${escapeHTML(c.name)}</h2><span class="eyebrow">${clubName} · CAPTAIN</span><div class="signature-card career-signature"><small>SIGNATURE</small><b>${skillName(getSkill(c.skillId))}</b><p>${skillInfo(getSkill(c.skillId))}</p></div><div class="attributes">${Object.entries(
       c.attributes,
     )
       .map(
@@ -455,10 +500,17 @@ function upgradeMenu() {
 function settingsMenu(from) {
   mode = "settings";
   shell(
-    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Controls</b><small>Full techniques in both modes. Balanced adds light aiming and movement assistance.</small></div><select id="controls"><option value="balanced">Balanced · full techniques</option><option value="advanced">Manual · full techniques</option></select></div><div class="setting-row"><div><b>Difficulty</b><small>Decisions, positioning and keeper reactions. Applies immediately.</small></div><select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div><div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p><b>WASD / ARROWS</b> Move <b>SHIFT</b> Sprint <b>SPACE / Z</b> Pass <b>J</b> Tap / hold and release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Signature skill <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Hold to press <b>Q</b> Switch</p><p>Balanced keeps every technique with light goal aiming assistance, responsive movement and a green pass receiver ring. Manual gives full directional aim and heavier momentum. On iPad, touch the left movement area for the floating stick. Tap PASS for a short pass or hold to lob; THROUGH leads a run. Tap SHOOT for a normal shot, hold for power, swipe up to chip or sideways for finesse. CHIP is also available directly. Tap SKILL to use your footballer’s signature move, hold to shield. See Pause → Player Skills for every player’s signature. Aim passes with movement. Hold PRESS to close down; your movement overrides the assisted chase. SPRINT is optional and stays in a fixed slot.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
+    `<section class="panel settings-panel">${header("MAKE IT YOUR GAME", "Settings.")}<div class="setting-row"><div><b>Language</b><small>Choose one language for menus, skills and match controls.</small></div><select id="language"><option value="en">English</option><option value="ko">한국어</option></select></div><div class="setting-row"><div><b>Controls</b><small>Full techniques in both modes. Balanced adds light aiming and movement assistance.</small></div><select id="controls"><option value="balanced">Balanced · full techniques</option><option value="advanced">Manual · full techniques</option></select></div><div class="setting-row"><div><b>Difficulty</b><small>Decisions, positioning and keeper reactions. Applies immediately.</small></div><select id="difficulty"><option value="easy">Easy</option><option value="normal">Normal</option><option value="hard">Hard</option></select></div><div class="setting-row"><div><b>Graphics</b><small>Lower resolution can improve battery life.</small></div><select id="quality"><option value="high">High</option><option value="low">Battery saver</option></select></div><div class="setting-row"><div><b>Match sound</b><small>Procedural kicks, goals, and whistles.</small></div><select id="sound"><option value="on">On</option><option value="off">Off</option></select></div><div class="setting-row"><div><b>Touch controls</b><small>Automatic on iPad and touch devices.</small></div><select id="touch"><option value="auto">Automatic</option><option value="on">Always show</option></select></div>${button("touch-layout", "TOUCH LAYOUT ↗")}${button("local-assets", "LOCAL KIT / CREST ASSETS ↗", "subtle")}<div class="control-guide"><h3>The playbook</h3><p><b>WASD / ARROWS</b> Move <b>SHIFT</b> Sprint <b>SPACE / Z</b> Pass <b>J</b> Tap / hold and release to shoot <b>E</b> Through <b>L</b> Lob <b>K</b> Chip <b>F</b> Finesse <b>C</b> Signature skill <b>V</b> Shield <b>R</b> Tackle <b>X</b> Slide <b>P</b> Hold to press <b>Q</b> Switch</p><p>Balanced keeps every technique with light goal aiming assistance, responsive movement and a green pass receiver ring. Manual gives full directional aim and heavier momentum. On iPad, touch the left movement area for the floating stick. Tap PASS for a short pass or hold to lob; THROUGH leads a run. Tap SHOOT for a normal shot, hold for power, swipe up to chip or sideways for finesse. CHIP is also available directly. Tap SKILL to use your footballer’s signature move, hold to shield. See Pause → Player Skills for every player’s signature. Aim passes with movement. Hold PRESS to close down; your movement overrides the assisted chase. SPRINT is optional and stays in a fixed slot.</p><p>You attack the far goal ↑. Kick Off switches to the receiver; Q switches defenders. Career stays locked to your created player. Tap PASS to call for a teammate pass. Tackle at close range; missed slides leave recovery time. Touchline boards keep the ball in play.</p><p>Career goals count shots you take. AI teammate goals help the team score. Quitting or restarting an unfinished match earns no rewards.</p></div>${button("back", "← BACK", "primary")}${career ? button("reset-career", "RESET CAREER", "danger subtle") : ""}<div id="reset-confirm"></div></section>`,
   );
   bind("touch-layout", () => touchLayoutMenu(from));
   bind("local-assets", () => assetsMenu(() => settingsMenu(from)));
+  $("#language").value = settings.language;
+  $("#language").onchange = (e) => {
+    settings.language = e.target.value;
+    applyLanguage();
+    saveSettings();
+    settingsMenu(from);
+  };
   $("#controls").value = settings.controls;
   $("#controls").onchange = (e) => {
     settings.controls = e.target.value;
@@ -498,6 +550,7 @@ function settingsMenu(from) {
   bind("reset-career", () => {
     $("#reset-confirm").innerHTML =
       `<p>Delete your saved player and all career progress?</p>${button("delete-career", "YES, DELETE CAREER", "danger")}`;
+    localize($("#reset-confirm"), settings.language);
     bind("delete-career", () => {
       try {
         storage?.removeItem("mini-fc-career-v1");
@@ -567,7 +620,7 @@ function pause(force = false) {
 function showPause() {
   mode = "pause";
   shell(
-    `<section class="panel pause-panel">${header("TAKE A BREATHER", "Match paused.", `${match.score[0]} – ${match.score[1]} · ${formatTime(MATCH_SECONDS - match.elapsed)} remaining`)}${button("resume", "RESUME MATCH ↗", "primary")}${button("restart", "RESTART MATCH")}${button("settings", "SETTINGS", "subtle")}${button("player-skills", "PLAYER SKILLS / 선수 스킬", "subtle")}${button("quit", "RETURN TO MAIN MENU", "subtle")}<p class="fine">Unfinished matches do not award XP or count toward your season.</p></section>`,
+    `<section class="panel pause-panel">${header("TAKE A BREATHER", "Match paused.", `${match.score[0]} – ${match.score[1]} · ${formatTime(MATCH_SECONDS - match.elapsed)} remaining`)}${button("resume", "RESUME MATCH ↗", "primary")}${button("restart", "RESTART MATCH")}${button("settings", "SETTINGS", "subtle")}${button("player-skills", "PLAYER SKILLS", "subtle")}${button("quit", "RETURN TO MAIN MENU", "subtle")}<p class="fine">Unfinished matches do not award XP or count toward your season.</p></section>`,
   );
   bind("resume", resume);
   bind("restart", () => startMatch(careerMatch));
@@ -578,7 +631,7 @@ function showPause() {
 function playerSkillsMenu() {
   mode = "skills";
   shell(
-    `<section class="panel skills-panel">${header("EVERY PLAYER HAS A SIGNATURE", "선수별 고유 스킬", "C / tap SKILL activates the selected footballer's own move. Goalkeeper traits work automatically.")}${[
+    `<section class="panel skills-panel">${header("EVERY PLAYER HAS A SIGNATURE", "Player signatures", "C / tap SKILL activates the selected footballer's own move. Goalkeeper traits work automatically.")}${[
       0, 1,
     ]
       .map(
@@ -587,7 +640,7 @@ function playerSkillsMenu() {
             .filter((p) => p.team === team)
             .map((p) => {
               const s = getSkill(p.skillId);
-              return `<article data-player-skill="${p.id}" class="signature-card"><small>#${p.id + 7} · ${p.role.toUpperCase()}${careerMatch && p.id === 0 ? " · YOU" : ""}</small><b>${s.name} · ${s.label}</b><p>${s.description}</p></article>`;
+              return `<article data-player-skill="${p.id}" class="signature-card"><small>#${p.id + 7} · ${p.role.toUpperCase()}${careerMatch && p.id === 0 ? " · YOU" : ""}</small><b>${skillName(s)}</b><p>${skillInfo(s)}</p></article>`;
             })
             .join("")}</div>`,
       )
@@ -602,7 +655,8 @@ function resume() {
   input.active = true;
 }
 function announce(title, sub = "") {
-  $("#announcement").innerHTML = `<strong>${title}</strong><span>${sub}</span>`;
+  $("#announcement").innerHTML =
+    `<strong>${t(title)}</strong><span>${t(sub)}</span>`;
   // Fade out before the 1.2-second restart freeze ends, keeping live play visible.
   announcementUntil = performance.now() + 950;
   $("#announcement").classList.add("visible");
@@ -615,7 +669,7 @@ function updateHUD() {
   $("#score").textContent = `${match.score[0]} : ${match.score[1]}`;
   $("#timer").textContent = formatTime(MATCH_SECONDS - match.elapsed);
   $("#player-label").textContent =
-    `${match.controlled + 7} · ${careerMatch ? career.name.toUpperCase() : match.teams?.[0].name.toUpperCase() || "MINI FC"}${careerMatch ? " · LOCKED" : ""}`;
+    `${match.controlled + 7} · ${careerMatch ? career.name.toUpperCase() : match.teams?.[0].name.toUpperCase() || "MINI FC"}${careerMatch ? " · " + t("LOCKED") : ""}`;
   const owner =
     match.ball.owner === null ? null : match.players[match.ball.owner];
   input.setContext(
@@ -630,30 +684,36 @@ function updateHUD() {
     player.stamina >= 0.08 &&
     player.recovery <= 0 &&
     player.stunned <= 0;
-  $("#signature-status").textContent =
-    `${signature.name} · ${player.skillCooldown > 0 ? player.skillCooldown.toFixed(1) + "s" : skillReady ? "READY · C / SKILL" : "C / SKILL · ON THE BALL"}`;
-  $("#skill-button").firstChild.textContent = signature.short;
-  $("#skill-button small").textContent =
+  const cooldown =
     player.skillCooldown > 0
-      ? `SKILL · ${player.skillCooldown.toFixed(1)}s / HOLD: SHIELD`
-      : "SKILL · TAP / HOLD: SHIELD";
+      ? player.skillCooldown.toFixed(1) +
+        (settings.language === "ko" ? "초" : "s")
+      : "";
+  $("#signature-status").textContent =
+    `${skillName(signature)} · ${cooldown || (skillReady ? t("READY") : t("ON THE BALL"))}`;
+  $("#skill-button").firstChild.textContent = t(signature.short);
+  $("#skill-button small").textContent =
+    `${t("SKILL")} · ${cooldown || t("TAP")} / ${t("HOLD: SHIELD")}`;
   $("#skill-button").classList.toggle("cooling", player.skillCooldown > 0);
   $("#skill-button").setAttribute(
     "aria-label",
-    `${signature.name}, ${player.skillCooldown > 0 ? "cooldown " + Math.ceil(player.skillCooldown) + " seconds" : "tap for signature, hold to shield"}`,
+    `${skillName(signature)}, ${cooldown || t("READY")}`,
   );
   const charge = input.charge();
   match.passAim = input.direction();
   $("#desktop-help").textContent =
-    "WASD MOVE · SPACE PASS · J TAP / HOLD SHOT · E THROUGH · C SIGNATURE · V SHIELD · P PRESS · ESC PAUSE";
+    settings.language === "ko"
+      ? "WASD 이동 · SPACE 패스 · J 탭/길게 슛 · E 스루 · C 개인기 · V 볼 보호 · P 압박 · ESC 일시정지"
+      : "WASD MOVE · SPACE PASS · J TAP / HOLD SHOT · E THROUGH · C SIGNATURE · V SHIELD · P PRESS · ESC PAUSE";
   $("#shot-power").classList.toggle("charging", charge > 0);
   $("#shot-power>span").style.width = `${charge * 100}%`;
   $("#shot-power small").textContent =
-    charge > 0
-      ? `POWER ${Math.round(charge * 100)}% · RELEASE TO SHOOT · ${document.body.classList.contains("touch") ? "SWIPE ↑ CHIP / SIDEWAYS FINESSE" : "K CHIP / F FINESSE"}`
-      : "SHOT POWER · K CHIP / F FINESSE";
-  $("#pass-button").firstChild.textContent =
-    careerMatch && owner?.team === 0 && owner.id !== 0 ? "CALL PASS" : "PASS";
+    settings.language === "ko"
+      ? `${charge > 0 ? "슛 파워 " + Math.round(charge * 100) + "% · 떼면 슛 · " : ""}${document.body.classList.contains("touch") ? "위로 밀기: 칩슛 / 옆으로: 감아차기" : "K 칩슛 / F 감아차기"}`
+      : `${charge > 0 ? "POWER " + Math.round(charge * 100) + "% · RELEASE TO SHOOT · " : ""}${document.body.classList.contains("touch") ? "SWIPE ↑ CHIP / SIDEWAYS FINESSE" : "K CHIP / F FINESSE"}`;
+  $("#pass-button").firstChild.textContent = t(
+    careerMatch && owner?.team === 0 && owner.id !== 0 ? "CALL PASS" : "PASS",
+  );
   $("#stamina span").style.width =
     `${match.players[match.controlled].stamina * 100}%`;
 }

@@ -539,6 +539,10 @@ export class Renderer {
         m.body.position.y = -0.35;
         m.arms[0].rotation.x = m.arms[1].rotation.x = -1.4;
       }
+      if (p.action === "high-save") {
+        m.arms[0].rotation.x = m.arms[1].rotation.x = -2.7;
+        m.body.position.y += Math.sin((p.actionTime / 0.55) * Math.PI) * 0.25;
+      }
       if (p.action === "catch")
         m.arms[0].rotation.x = m.arms[1].rotation.x = -1.1;
       if (
@@ -575,6 +579,47 @@ export class Renderer {
             m.body.rotation.y =
               base + p.skillSide * Math.max(0, t - 0.55) * 1.5;
             m.body.position.y -= wave * 0.1;
+            break;
+          case "elastico":
+            m.body.rotation.z = Math.sin(t * Math.PI * 2) * p.skillSide * 0.45;
+            m.legs[1].rotation.z = Math.sin(t * Math.PI * 2) * 0.8;
+            break;
+          case "reverse-elastico":
+            m.body.rotation.z = -Math.sin(t * Math.PI * 2) * p.skillSide * 0.4;
+            m.legs[0].rotation.z = -Math.sin(t * Math.PI * 2) * 0.75;
+            break;
+          case "la-croqueta":
+            m.body.rotation.z = p.skillSide * wave * 0.2;
+            m.legs[0].rotation.z = Math.sin(t * Math.PI * 3) * 0.45;
+            m.legs[1].rotation.x = Math.cos(t * Math.PI * 3) * 0.6;
+            break;
+          case "ball-roll":
+            m.legs[1].rotation.z = wave * p.skillSide * 0.7;
+            m.legs[1].rotation.x = -0.6 * wave;
+            break;
+          case "heel-chop":
+            m.legs[1].rotation.x = Math.sin(t * Math.PI * 2) * 1.3;
+            m.body.rotation.y = base + p.skillSide * Math.max(0, t - 0.45) * 2;
+            break;
+          case "mcgeady-spin":
+            m.body.rotation.y = base - p.skillSide * t * Math.PI * 1.5;
+            m.arms[1].rotation.x = -wave;
+            break;
+          case "drag-push":
+            m.legs[0].rotation.x = Math.sin(t * Math.PI * 2) * 0.9;
+            m.body.rotation.x = t < 0.4 ? -0.25 : 0.3;
+            break;
+          case "stop-go":
+            m.body.rotation.x = t < 0.38 ? -0.2 : 0.35;
+            m.arms[0].rotation.x = -wave * 0.9;
+            break;
+          case "scoop-turn":
+            m.body.rotation.y = base + p.skillSide * t * Math.PI;
+            m.legs[1].rotation.z = wave * 0.65;
+            break;
+          case "v-drag":
+            m.body.rotation.z = -wave * p.skillSide * 0.3;
+            m.legs[0].rotation.x = t < 0.45 ? -0.8 : 0.5;
             break;
           default:
             m.body.rotation.z = wave * p.skillSide * 0.35;

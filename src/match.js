@@ -471,8 +471,19 @@ export class Match {
     const direction = options.direction;
     const directional =
       direction && Math.hypot(direction.x || 0, direction.z || 0) > 0.15;
+    const corner = user
+      ? type === "chip"
+        ? 1.2
+        : type === "finesse"
+          ? 3.8
+          : 3.45
+      : 2.6;
     const automaticPlacement =
-      Math.abs(p.x) < 3 ? (keeper.x >= 0 ? -2.6 : 2.6) : -Math.sign(p.x) * 2.6;
+      Math.abs(p.x) < 3
+        ? keeper.x >= 0
+          ? -corner
+          : corner
+        : -Math.sign(p.x) * corner;
     const directedPlacement =
       directional && Math.abs(direction.x) > 0.15
         ? clamp(
@@ -493,7 +504,7 @@ export class Match {
       -7.5,
       7.5,
     );
-    let speed = 28 + accuracy * 0.09,
+    let speed = 30.5 + accuracy * 0.09,
       vy = 3,
       curve = 0;
     if (type === "power") {
@@ -502,17 +513,22 @@ export class Match {
     }
     if (type === "chip") {
       const flight = clamp(dz / 14, 1.2, 2.3);
-      speed = Math.hypot(targetX - p.x, goalZ - p.z) / flight;
+      speed =
+        (Math.hypot(targetX - p.x, goalZ - p.z) * 0.12) /
+        (1 - Math.exp(-0.12 * flight));
       vy = 6 * flight + 0.45 / flight;
     }
     if (type === "finesse") {
-      speed = 25 + accuracy * 0.045;
+      speed = 30.5 + accuracy * 0.045;
       vy = 2.7;
       curve = (p.x >= 0 ? -0.34 : 0.34) * dirFor(p.team);
     }
     const origin = distance(b, p) < 2.6 ? b : p;
     const d = unit(targetX - origin.x, goalZ - origin.z),
       travel = Math.hypot(targetX - origin.x, goalZ - origin.z) / speed;
+    // Keep placed shots airborne until the goal rather than losing speed to ground drag.
+    if (type === "normal" || type === "finesse")
+      vy = clamp(6 * travel + 0.35 / Math.max(0.12, travel), 2.2, 5.8);
     const offset = -curve * travel * 0.5;
     this.release(
       p,
@@ -886,10 +902,22 @@ export class Match {
       const intercept = this.predictBall(time);
       if (p.keeperReaction > 0) x = p.x;
       else if (time > 0 && time < 1.2) {
+        if (
+          Math.abs(ownZ - p.z) < 3.8 &&
+          time < 0.45 &&
+          intercept.y > 1.8 &&
+          intercept.y < 2.85 &&
+          Math.abs(intercept.x - p.x) < 1.2 &&
+          p.action !== "high-save"
+        ) {
+          p.action = "high-save";
+          p.actionTime = 0.55;
+        }
         x = clamp(intercept.x, -5.5, 5.5);
         if (
           Math.abs(x - p.x) > 0.75 &&
           p.saveCooldown <= 0 &&
+          p.action !== "dive" &&
           time < 0.6 &&
           intercept.y < 3
         ) {
@@ -904,7 +932,7 @@ export class Match {
     // A committed keeper backpedals more slowly under a lifted chip.
     const backpedal =
       incoming && b.y > 1.3 && Math.abs(ownZ - p.z) > 3.8 && d.z * dir < 0
-        ? 0.42
+        ? 0.22
         : 1;
     this.move(
       p,
@@ -928,10 +956,22 @@ export class Match {
           inBox = p.z * -dir > 25 && b.z * -dir > 25 && Math.abs(b.x) < 8;
         const diving = p.action === "dive",
           rating = this.teams?.[p.team]?.ratings?.goalkeeper ?? 70;
-        const reach = (diving ? 2.25 : 1.25) + (rating - 70) * 0.007;
+        const diveProgress = clamp(1 - p.actionTime / 0.65, 0, 1);
+        const reach =
+          (diving
+            ? 1.5 + Math.sin((diveProgress * Math.PI) / 2) * 0.65
+            : 1.25) +
+          (rating - 70) * 0.007;
+        // A committed dive cannot instantly reverse to cover the other side.
+        if (diving && (b.x - p.x) * p.diveSide < -0.75) continue;
         const gap = distance(p, b),
           speed = Math.hypot(b.vx, b.vz);
-        if (!inBox || gap > reach || b.y > (diving ? 2.65 : 1.9)) continue;
+        if (
+          !inBox ||
+          gap > reach ||
+          b.y > (p.action === "high-save" ? 2.85 : diving ? 2.65 : 1.9)
+        )
+          continue;
         // Fast shots outside the keeper's planted reach beat a late stretch, deterministically.
         if (speed > 35 && Math.abs(b.x - p.x) > reach * 0.78) continue;
         const catchBall =
