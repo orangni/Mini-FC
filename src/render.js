@@ -576,24 +576,12 @@ export class Renderer {
           ? 0xc1fff1
           : 0xfcce65,
     );
-    const separation = !menu && match.career ? Math.abs(b.z - p.z) : 0;
     const leadX = Math.max(-4, Math.min(4, b.vx * 0.18));
     const leadZ = Math.max(-5, Math.min(5, b.vz * 0.18));
-    const attackDirection =
-      (b.owner === null ? b.lastTeam : match.players[b.owner].team) === 0
-        ? -1
-        : 1;
-    const focusX = menu
-        ? 2
-        : match.career
-          ? b.x * 0.3 + p.x * 0.25
-          : b.x * 0.4 + leadX * 0.35,
-      focusZ = menu
-        ? 0
-        : match.career
-          ? b.z * 0.45 + p.z * 0.35
-          : b.z * 0.66 + leadZ * 0.3 + attackDirection * 2,
-      lerp = 1 - Math.exp(-dt * 4.8);
+    // A close ball camera in both modes; off-ball career distance never changes zoom.
+    const focusX = menu ? 2 : b.x + leadX * 0.12,
+      focusZ = menu ? 0 : b.z + leadZ * 0.12,
+      lerp = 1 - Math.exp(-dt * 6);
     this.look.lerp(
       this.focusTarget.set(focusX, 0, focusZ),
       1 - Math.exp(-dt * 7),
@@ -601,9 +589,9 @@ export class Renderer {
     const portrait = this.camera.aspect < 1;
     this.camera.position.lerp(
       this.cameraTarget.set(
-        this.look.x * 0.5 + (menu ? 21 : 0),
-        portrait ? 85 : 57 + Math.min(20, separation * 0.4),
-        this.look.z + (portrait ? 62 : 44 + Math.min(12, separation * 0.2)),
+        menu ? this.look.x * 0.5 + 21 : this.look.x,
+        menu ? (portrait ? 85 : 57) : portrait ? 40 : 33,
+        this.look.z + (menu ? (portrait ? 62 : 44) : portrait ? 31 : 26),
       ),
       lerp,
     );

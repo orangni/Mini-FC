@@ -1,5 +1,7 @@
 # Gameplay overhaul
 
+Follow-up camera/control change: live matches now use a close, ball-centered view (landscape height 33, portrait 40), replacing the off-ball captain framing described below. Career control is enforced before movement and always stays on the created player. Kick Off defensive selection is manual, with a 500ms SWITCH repeat guard. The current suite has 77 tests; the balance results below describe the original overhaul checkpoint.
+
 The overhaul improves the existing 6v6 game rather than rebuilding its menus, assets or career system. The 120-second clock, goalkeeper immunity, 70 clubs, kits, v1/v2 save compatibility and large touch controls remain supported.
 
 ## Implementation by file

@@ -230,6 +230,13 @@ export class Match {
     this.pendingPass = null;
     this.assistCandidate = null;
   }
+  // Career identity is an invariant, including before movement and queued actions.
+  get controlled() {
+    return this.career ? 0 : (this._controlled ?? 0);
+  }
+  set controlled(id) {
+    this._controlled = this.career ? 0 : id;
+  }
   takeEvents() {
     return this.events.splice(0);
   }
@@ -257,11 +264,12 @@ export class Match {
     return closest;
   }
   switchPlayer() {
-    if (this.career || this.finished || this.demo) return false;
+    if (this.career || this.finished || this.demo || this.manualSwitchTime > 0)
+      return false;
     const target = this.nearest(0, this.ball, this.controlled);
     if (!target) return false;
     this.controlled = target.id;
-    this.manualSwitchTime = 1.5;
+    this.manualSwitchTime = 0.5;
     this.events.push({ type: "switch" });
     return true;
   }
@@ -1399,13 +1407,8 @@ export class Match {
       }
     }
     if (!this.demo) this.tryQueuedAction();
+    // In Kick Off, defensive selection stays put until an intentional switch.
+    // Passing/receiving can still follow possession; career always stays on player 0.
     if (this.career) this.controlled = 0;
-    else if (
-      this.manualSwitchTime <= 0 &&
-      b.owner !== null &&
-      this.players[b.owner].team === 1 &&
-      distance(this.players[this.controlled], b) > 9
-    )
-      this.controlled = this.nearest(0).id;
   }
 }

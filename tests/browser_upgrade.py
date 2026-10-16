@@ -95,9 +95,9 @@ with sync_playwright() as p:
  expect(page.locator('#press-button')).to_be_visible();expect(page.locator('#switch-button')).to_be_hidden()
  page.keyboard.press('KeyQ');assert page.evaluate('__miniFC.match.controlled')==0
  page.evaluate('__miniFC.match.ball.owner=1');page.wait_for_timeout(120);assert page.evaluate('__miniFC.match.controlled')==0
- # The broadcast camera widens to keep an off-ball career captain in frame.
+ # The close ball camera stays zoomed in even when the locked captain is far away.
  page.evaluate("__miniFC.match.ai=()=>{};__miniFC.match.players[0].x=0;__miniFC.match.players[0].z=24;__miniFC.match.players[1].x=0;__miniFC.match.players[1].z=-28;__miniFC.match.players[1].cooldown=5;__miniFC.match.ball.owner=1")
- page.wait_for_function("(()=>{const r=__miniFC.renderer,v=r.marker.position.clone().project(r.camera);return Math.abs(r.marker.position.z-24)<.1 && Math.abs(v.y)<.97 && Math.abs(v.x)<.97})()")
+ page.wait_for_function("(()=>{const r=__miniFC.renderer,v=r.ball.position.clone().project(r.camera);return Math.abs(r.marker.position.z-24)<.1 && Math.abs(v.y)<.06 && Math.abs(v.x)<.06 && r.camera.position.y<35})()")
  assert not errors,errors
  assert not failed,failed
  print(json.dumps({'result':'PASS','clubs':'search, filters, same-club alternate kits, local image import','touch':'charge, chip, through, lob, skill, finesse swipe, floating stick with sprint, cancel, contextual tackle','career':'club selection, role, captain lock, hidden switch','settings':'size, opacity, edge position persist','javascript_errors':errors,'failed_responses':failed}))
