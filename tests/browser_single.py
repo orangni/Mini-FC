@@ -26,10 +26,10 @@ try:
         page.goto(url+'?test=1');page.wait_for_selector('#play')
         page.click('#career');page.fill('#player-name','Standalone Captain');page.click('#create-career');page.reload()
         page.wait_for_selector('#career');page.click('#career');assert page.evaluate('__miniFC.career.name')=='Standalone Captain'
-        page.click('#fixture')
+        page.evaluate('__miniFC.career.trust=90;__miniFC.career.sharpness=90;__miniFC.career.fitness=100;__miniFC.career.injuryMatches=0');page.click('#fixture')
         page.evaluate('''() => {const m=__miniFC.match;m.kickoffWait=0;m.players.forEach((p,i)=>{p.x=i%2?20:-20;p.z=15;p.cooldown=5;});Object.assign(m.players[0],{x:0,z:-24,dx:0,dz:-1,cooldown:0});Object.assign(m.ball,{owner:0,x:0,z:-25,y:.35,vx:0,vz:0,vy:0});}''')
         page.keyboard.press('KeyJ');page.wait_for_function('__miniFC.match.score[0]===1')
-        page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.elapsed=119.99');page.wait_for_function('__miniFC.mode==="results"')
+        page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.careerMinutes=90;__miniFC.match.elapsed=119.99');page.wait_for_function('__miniFC.mode==="results"')
         assert page.evaluate('__miniFC.career.xp')==180
         assert not extra,extra
         assert not errors,errors

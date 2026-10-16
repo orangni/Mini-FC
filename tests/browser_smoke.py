@@ -62,12 +62,12 @@ with sync_playwright() as p:
     expect(page.get_by_role('heading', name='Safari Captain')).to_be_visible()
     assert page.evaluate('__miniFC.career.attributes.pace') == 60
     page.screenshot(path=str(ARTIFACTS / 'career.png'))
-    page.click('#fixture')
+    page.evaluate('__miniFC.career.trust=90;__miniFC.career.sharpness=90;__miniFC.career.fitness=100;__miniFC.career.injuryMatches=0');page.click('#fixture')
     page.evaluate(PREPARE_SHOT)
     page.keyboard.press('KeyJ')
     page.wait_for_function('__miniFC.match.score[0] === 1')
     # Advance the clock through the real simulation's full-time event.
-    page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.elapsed=119.99')
+    page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.careerMinutes=90;__miniFC.match.elapsed=119.99')
     page.wait_for_function('__miniFC.mode === "results"')
     assert page.evaluate('__miniFC.career.played') == 1
     assert page.evaluate('__miniFC.career.xp') == 180
@@ -76,24 +76,24 @@ with sync_playwright() as p:
     page.click('#next')
     page.click('#upgrades')
     page.click('[data-upgrade="pace"]')
-    assert page.evaluate('__miniFC.career.attributes.pace') == 63
+    assert 60.4 <= page.evaluate('__miniFC.career.attributes.pace') < 61
     assert page.evaluate('__miniFC.career.points') == 0
     page.reload()
     page.wait_for_selector('#career')
     page.click('#career')
     assert page.evaluate('__miniFC.career.name') == 'Safari Captain'
-    assert page.evaluate('__miniFC.career.attributes.pace') == 63
+    assert 60.4 <= page.evaluate('__miniFC.career.attributes.pace') < 61
     assert page.evaluate('__miniFC.career.seasonMatch') == 1
     # Every season result travels through the normal full-time/reward UI.
-    for expected in range(2, 6):
-        page.click('#fixture')
-        page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.score=[4,0];__miniFC.match.elapsed=119.99')
+    for expected in range(2, 11):
+        page.evaluate('__miniFC.career.trust=90;__miniFC.career.sharpness=90;__miniFC.career.fitness=100;__miniFC.career.injuryMatches=0');page.click('#fixture')
+        page.evaluate('__miniFC.match.kickoffWait=0;__miniFC.match.score=[4,0];__miniFC.match.careerMinutes=90;__miniFC.match.elapsed=119.99')
         page.wait_for_function('__miniFC.mode === "results"')
         assert page.evaluate('__miniFC.career.played') == expected
         page.click('#next')
     assert page.evaluate('__miniFC.career.championships') == 1
-    assert page.evaluate('__miniFC.career.table.every(r=>r.played===5)')
-    page.click('#fixture')
+    assert page.evaluate('__miniFC.career.table.every(r=>r.played===10)')
+    page.evaluate('__miniFC.career.trust=90;__miniFC.career.sharpness=90;__miniFC.career.fitness=100;__miniFC.career.injuryMatches=0');page.click('#fixture')
     assert page.evaluate('__miniFC.career.season') == 2
     assert page.evaluate('__miniFC.career.seasonMatch') == 0
     assert page.evaluate('__miniFC.career.table.every(r=>r.played===0)')
@@ -156,5 +156,5 @@ with sync_playwright() as p:
     }''')
     assert page.evaluate('__miniFC.input.axes.x===0 && !__miniFC.input.sprint')
     assert not errors, errors
-    print(json.dumps({'result':'PASS','desktop':'keyboard, goal, pause/resume, restart, blur pause','career':'creation, results, XP, upgrade, reload, five-match championship, next season','touch':'simultaneous joystick + sprint, release/cancel, shoot, pass, landscape/portrait layout','javascript_errors':errors,'failed_http_responses':requests}))
+    print(json.dumps({'result':'PASS','desktop':'keyboard, goal, pause/resume, restart, blur pause','career':'creation, results, XP, upgrade, reload, ten-match championship, next season','touch':'simultaneous joystick + sprint, release/cancel, shoot, pass, landscape/portrait layout','javascript_errors':errors,'failed_http_responses':requests}))
     browser.close()

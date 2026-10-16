@@ -120,7 +120,8 @@ Win 3 pts · Draw 1 pt|승리 3점 · 무승부 1점
 Ties: goal difference, goals scored, club name.|동률 기준: 득실 차, 득점, 구단 이름.
 60 XP per match · 80 per win|경기당 60 XP · 승리 시 80 XP
 40 per goal you score · 30 per draw|내 득점당 40 XP · 무승부 30 XP
-100 XP = 1 point · 1 point = +3 attribute|100 XP = 성장 포인트 1점 · 1점 = 능력치 +3
+100 XP = 1 point · 1 point = +0.4 attribute|100 XP = 성장 포인트 1점 · 1점 = 능력치 +0.4
+Focused training develops only your player, +0.4 per point. Growth stops at potential; age can cause decline.|집중 훈련은 내 선수의 능력치를 포인트당 0.4 올립니다. 잠재력까지 성장하며, 나이가 들면 하락할 수 있습니다.
 TRAINING GROUND|훈련장
 Earn it. Improve it.|경험을 쌓고 성장하세요.
 Pace|속도
@@ -130,7 +131,7 @@ Movement and sprint speed|이동과 질주 속도
 Shot speed and accuracy|슛 속도와 정확도
 Pass travel speed|패스 속도
 MAX|최대
-+3 / 1 PT|+3 / 1점
++0.4 / 1 PT|+0.4 / 1점
 Upgrades improve your own footballer in career matches. Attributes cap at 99.|능력치 강화는 커리어의 내 선수에게 적용됩니다. 최대 능력치는 99입니다.
 MAKE IT YOUR GAME|나에게 맞는 경기
 Settings.|설정.

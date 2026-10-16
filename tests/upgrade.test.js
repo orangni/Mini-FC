@@ -287,7 +287,7 @@ test("automatic alternate kits avoid colour clashes, including identical-club ma
     true,
   );
 });
-test("new club careers retain five-match seasons and select opponents from the same league", () => {
+test("new club careers retain ten-match seasons and select opponents from the same league", () => {
   for (const id of ["arsenal", "bayern", "inter", "barcelona", "real-madrid"]) {
     const c = newCareer("A", "Striker", id);
     const league = getClub(id).league;
@@ -297,22 +297,19 @@ test("new club careers retain five-match seasons and select opponents from the s
         (r) => CLUB_DATABASE.find((x) => x.name === r.name)?.league === league,
       ),
     );
-    for (let i = 0; i < 5; i++)
+    for (let i = 0; i < 10; i++)
       finishMatch(c, [4, 0], { goals: 1, assists: 1, rating: 8 });
-    assert.equal(c.assists, 5);
-    assert.equal(c.ratingTotal, 40);
+    assert.equal(c.assists, 10);
+    assert.equal(c.ratingTotal, 80);
     assert.equal(nextSeason(c), true);
     assert.equal(c.clubId, id);
   }
 });
 test("original v1 saves migrate without losing XP, attributes, season or league progress", () => {
   const original = newCareer("Original", "Midfielder");
+  finishMatch(original, [2, 0], { goals: 1 }, () => 0.5);
   original.version = 1;
   delete original.clubId;
-  delete original.assists;
-  delete original.ratingTotal;
-  delete original.lastRating;
-  finishMatch(original, [2, 0], { goals: 1 });
   delete original.assists;
   delete original.ratingTotal;
   delete original.lastRating;
@@ -322,7 +319,7 @@ test("original v1 saves migrate without losing XP, attributes, season or league 
       setItem: (k, v) => data.set(k, v),
     };
   const migrated = loadCareer(storage);
-  assert.equal(migrated.version, 2);
+  assert.equal(migrated.version, 3);
   assert.equal(migrated.clubId, "mini-fc");
   assert.equal(migrated.xp, original.xp);
   assert.equal(migrated.seasonMatch, 1);

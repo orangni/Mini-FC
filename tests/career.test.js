@@ -48,25 +48,29 @@ test("upgrades consume points, persist, affect overall and cap at 99", () => {
   assert.equal(upgrade(c, "pace"), false);
   c.points = 20;
   assert.equal(upgrade(c, "pace"), true);
-  assert.equal(c.attributes.pace, 63);
-  assert.equal(overall(c), 61);
+  assert.equal(c.attributes.pace, 60.4);
+  assert.equal(overall(c), 60);
   assert.equal(c.points, 19);
-  for (let i = 0; i < 30; i++) upgrade(c, "pace");
+  assert.equal(upgrade(c, "pace"), false); // only one activity per fixture
+  c.activityFixture = null;
+  c.attributes.pace = 98.8;
+  c.potential = 99;
+  upgrade(c, "pace");
   assert.equal(c.attributes.pace, 99);
   assert.equal(upgrade(c, "bad"), false);
   assert.equal(upgrade(c, "pace"), false);
 });
-test("five rounds play every unique fixture once and all clubs play five games", () => {
+test("ten rounds play every unique fixture twice and all clubs play ten games", () => {
   const pairs = FIXTURES.flat().map((pair) => [...pair].sort().join("-"));
   assert.equal(new Set(pairs).size, 15);
   const c = newCareer("A", "Striker");
   const rivals = new Set();
-  for (let i = 0; i < 5; i++) {
+  for (let i = 0; i < 10; i++) {
     rivals.add(opponent(c));
     finishMatch(c, [8, 0], { goals: 1 }, () => 0.5);
   }
   assert.equal(rivals.size, 5);
-  assert.ok(c.table.every((r) => r.played === 5));
+  assert.ok(c.table.every((r) => r.played === 10));
   assert.equal(standings(c)[0].name, "Mini FC");
   assert.equal(c.championships, 1);
   assert.equal(c.lastReward.champion, true);
@@ -87,7 +91,7 @@ test("career round trip retains upgrades, standings, records and season", () => 
   upgrade(c, "shooting");
   saveCareer(storage, c);
   assert.deepEqual(loadCareer(storage), c);
-  assert.equal(loadCareer(storage).attributes.shooting, 63);
+  assert.ok(loadCareer(storage).attributes.shooting > 60.4);
 });
 test("corrupt, incompatible and unavailable saves fail safely", () => {
   const storage = memoryStorage();

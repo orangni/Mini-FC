@@ -26,8 +26,21 @@ import {
   finishMatch,
   upgrade,
   nextSeason,
+  selection,
+  activity,
+  acceptOffer,
+  respondEvent,
+  renewContract,
+  retire,
+  currentClub,
+  fixtureId,
+  matchAttributes,
 } from "./career.js";
 
+import {
+  simulateTo,
+  performance as careerPerformance,
+} from "./career-match.js";
 import { translateText, localize } from "./i18n.js";
 
 const $ = (selector) => document.querySelector(selector);
@@ -87,6 +100,13 @@ try {
 } catch {
   /* Defaults remain usable when storage is unavailable. */
 }
+const ct = (en, ko) => (settings.language === "ko" ? ko : en);
+const money = (value) =>
+  new Intl.NumberFormat(settings.language, {
+    style: "currency",
+    currency: "EUR",
+    maximumFractionDigits: 0,
+  }).format(value);
 const t = (text) => translateText(text, settings.language);
 const skillName = (skill) => skillLabel(skill, settings.language);
 const skillInfo = (skill) => skillDescription(skill, settings.language);
@@ -102,6 +122,8 @@ try {
 let mode = "main",
   match = new Match({ demo: true, difficulty: settings.difficulty }),
   careerMatch = false,
+  careerFixtureId = null,
+  careerSimulated = false,
   opponentName = "Rival FC";
 let announcementUntil = 0,
   toastTimer,
@@ -445,31 +467,180 @@ function careerMenu() {
   mode = "career";
   hud.hidden = true;
   const c = career,
-    complete = c.seasonMatch === 5,
+    complete = c.seasonMatch === 10,
     table = standings(c),
-    rank = table.findIndex((r) => r.name === c.table[0].name) + 1;
-  const clubName = escapeHTML(c.table[0].name);
+    club = currentClub(c),
+    chosen = selection(c);
+  const role = {
+    starter: ct("Starting XI", "선발"),
+    substitute: ct(
+      `Substitute · ${chosen.entryMinute}′ entry`,
+      `교체 · ${chosen.entryMinute}분 투입`,
+    ),
+    bench: ct("Bench · no planned minutes", "벤치 · 출전 미정"),
+    injured: ct(
+      `Injured · ${c.injuryMatches} fixture absence`,
+      `부상 · ${c.injuryMatches}경기 결장`,
+    ),
+    retired: ct("Retired", "은퇴"),
+  }[chosen.role];
+  const rank = table.findIndex((r) => r.name === club.name) + 1;
+  const activityUsed = c.activityFixture === fixtureId(c);
+  const events = {
+    opportunity: [
+      ct("Manager offers a starting chance", "감독의 선발 기회"),
+      ct(
+        "Accept: start the next fixture. Or recover +8 fitness.",
+        "수락하면 다음 경기 선발 기회. 대신 휴식을 택하면 체력 +8.",
+      ),
+    ],
+    praise: [
+      ct("Your form is getting noticed", "좋은 활약에 관심이 모입니다"),
+      ct(
+        "Team focus: trust +3. Ambition: reputation +2, trust −1.",
+        "팀에 집중: 신뢰 +3. 야망: 평판 +2, 신뢰 −1.",
+      ),
+    ],
+    competition: [
+      ct("Competition for your position", "포지션 경쟁"),
+      ct(
+        "Extra work: sharpness +6, trust +1, fitness −4. Or rest +5 fitness.",
+        "추가 노력: 실전감각 +6, 신뢰 +1, 체력 −4. 휴식: 체력 +5.",
+      ),
+    ],
+    renewal: [
+      ct("Contract renewal discussion", "재계약 협상"),
+      ct(
+        "Standard: two years, +15% salary. Negotiate +30% with high trust; rejection costs trust.",
+        "기본: 2년, 급여 +15%. 신뢰가 높으면 +30% 협상 가능. 거절되면 신뢰가 감소합니다.",
+      ),
+    ],
+  };
+  const newsText = {
+    "opportunity:accept": ct(
+      "Manager promises your next start.",
+      "감독이 다음 경기 선발을 약속했습니다.",
+    ),
+    "opportunity:alternative": ct(
+      "Recovery chosen; fitness improves.",
+      "회복을 선택해 체력이 좋아졌습니다.",
+    ),
+    "praise:accept": ct(
+      "Team-first response improves manager trust.",
+      "팀을 우선한 답변으로 감독 신뢰가 올랐습니다.",
+    ),
+    "praise:alternative": ct(
+      "Public ambition raises reputation, at a trust cost.",
+      "포부를 밝혀 평판이 올랐지만 신뢰가 줄었습니다.",
+    ),
+    "competition:accept": ct(
+      "Extra work raises sharpness and trust, but costs fitness.",
+      "추가 훈련으로 경기 감각과 신뢰가 올랐지만 체력을 소모했습니다.",
+    ),
+    "competition:alternative": ct(
+      "Recovery chosen before competing for selection.",
+      "주전 경쟁에 앞서 회복을 선택했습니다.",
+    ),
+    "transfer:joined": ct(
+      "Transfer completed; club history updated.",
+      "이적 완료. 소속팀 기록을 갱신했습니다.",
+    ),
+    "loan:joined": ct(
+      "Loan started; parent-club return is scheduled.",
+      "임대 시작. 원 소속팀 복귀가 예정되어 있습니다.",
+    ),
+    "migration:ten-match": ct(
+      "Old save preserved. Unfinished seasons extend to ten; completed five-match seasons are archived.",
+      "기존 저장 보존. 진행 중 시즌은 10경기로 확장하고 완료된 5경기 시즌은 기록했습니다.",
+    ),
+    "transfer:scheduled": ct(
+      "Move agreed for next season; current fixture count is unchanged.",
+      "다음 시즌 이적 합의. 현재 시즌 경기 수는 유지됩니다.",
+    ),
+    "renewal:declined": ct(
+      "Salary request declined. Standard renewal can be revisited next fixture.",
+      "급여 인상 요구가 거절됐습니다. 다음 경기 이후 기본 재계약을 다시 논의할 수 있습니다.",
+    ),
+    "renewal:signed": ct(
+      "Contract renewed for two seasons.",
+      "계약을 두 시즌 연장했습니다.",
+    ),
+  };
   shell(
-    `<section class="career-layout"><header class="page-heading"><div>${header(`PLAYER CAREER / SEASON ${c.season}`, "The next chapter.", "Build your player. Bring the title home.")}</div>${button("back", "← MAIN MENU", "subtle")}</header><div class="career-grid"><article class="player-card"><div class="player-card-top"><b>${overall(c)}<small>OVR</small></b><span>${escapeHTML(c.position.toUpperCase())}</span></div>${shirt(c.clubId)}<h2>${escapeHTML(c.name)}</h2><span class="eyebrow">${clubName} · CAPTAIN</span><div class="signature-card career-signature"><small>SIGNATURE</small><b>${skillName(getSkill(c.skillId))}</b><p>${skillInfo(getSkill(c.skillId))}</p></div><div class="attributes">${Object.entries(
+    `<section class="career-layout realistic-career"><header class="page-heading"><div>${header(ct(`PLAYER CAREER / SEASON ${c.season}`, `선수 커리어 / 시즌 ${c.season}`), c.retired ? ct("A career to remember.", "기억에 남을 선수 생활.") : ct("Your next opportunity.", "다음 기회를 향해."), ct("Compressed six-club competition. Exactly ten fixtures, including simulations. No calendar grind.", "6팀 압축 대회입니다. 시뮬레이션 포함 시즌당 정확히 10경기. 날짜를 넘길 필요가 없습니다."))}</div>${button("back", "← MAIN MENU", "subtle")}</header><div class="career-grid"><article class="player-card"><div class="player-card-top"><b>${overall(c)}<small>OVR</small></b><span>${t(c.position.toUpperCase())}</span></div>${shirt(c.clubId)}<h2>${escapeHTML(c.name)}</h2><span class="eyebrow">${escapeHTML(getClub(c.clubId).name)}</span><p>${ct("Age", "나이")} ${c.age} · ${ct("Potential", "잠재력")} ${c.potential}</p><div class="signature-card career-signature"><b>${skillName(getSkill(c.skillId))}</b><p>${skillInfo(getSkill(c.skillId))}</p></div><div class="attributes">${Object.entries(
       c.attributes,
     )
       .map(
         ([k, v]) =>
-          `<div><b>${v}</b><span>${k.toUpperCase().slice(0, 3)}</span></div>`,
+          `<div><b>${v.toFixed(1)}</b><span>${t(k.toUpperCase().slice(0, 3))}</span></div>`,
       )
       .join(
         "",
-      )}</div></article><div class="career-center"><article class="tile next-fixture"><span class="eyebrow">${complete ? "SEASON COMPLETE" : `NEXT FIXTURE / ${c.seasonMatch + 1} OF 5`}</span><h2>${complete ? (rank === 1 ? "Champions." : "A season to build on.") : `${clubName} <span>vs</span><br>${escapeHTML(opponent(c))}`}</h2><p>${complete ? `You finished ${rank}${rank === 1 ? "st" : rank === 2 ? "nd" : rank === 3 ? "rd" : "th"}. ${rank === 1 ? "Championship bonus: 3 upgrade points." : "A new season is a fresh start."}` : "Two minutes to make a difference."}</p>${button("fixture", complete ? "START NEXT SEASON ↗" : "PLAY MATCH ↗", "primary")}</article><article class="tile progression"><div><span class="eyebrow">PLAYER DEVELOPMENT</span><h3>${c.points} upgrade point${c.points === 1 ? "" : "s"}</h3></div>${button("upgrades", "TRAIN ↗")}<div class="xp-track"><span style="width:${c.xp % 100}%"></span></div><small>${c.xp} TOTAL XP · ${100 - (c.xp % 100)} XP TO NEXT POINT</small></article><div class="stat-strip"><div><b>${c.played}</b><span>PLAYED</span></div><div><b>${c.wins}</b><span>WINS</span></div><div><b>${c.goals}</b><span>YOUR GOALS</span></div><div><b>${c.championships}</b><span>TITLES</span></div><div><b>${c.assists}</b><span>ASSISTS</span></div><div><b>${c.played ? (c.ratingTotal / c.played).toFixed(1) : "—"}</b><span>AVG RATING</span></div></div><p class="fine career-record">ALL TIME · ${c.wins} WINS / ${c.draws} DRAWS / ${c.losses} LOSSES</p></div><article class="tile league"><span class="eyebrow">${c.clubId === "mini-fc" ? "NEIGHBORHOOD LEAGUE" : getClub(c.clubId).league === "FR" ? "EUROPEAN INVITATION" : LEAGUES[getClub(c.clubId).league] + " · SIX-CLUB SEASON"}</span><h3>Season ${c.season} standings</h3><table><thead><tr><th>CLUB</th><th>P</th><th>GD</th><th>PTS</th></tr></thead><tbody>${table.map((r, i) => `<tr class="${r.name === c.table[0].name ? "your-club" : ""}"><td><small>${i + 1}</small>${escapeHTML(r.name)}</td><td>${r.played}</td><td>${r.gf - r.ga}</td><td><b>${r.points}</b></td></tr>`).join("")}</tbody></table><p class="fine">Win 3 pts · Draw 1 pt<br>Ties: goal difference, goals scored, club name.</p><p class="fine">60 XP per match · 80 per win<br>40 per goal you score · 30 per draw<br>100 XP = 1 point · 1 point = +3 attribute</p></article></div></section>`,
+      )}</div><p class="career-role">${role}</p></article><div class="career-center"><article class="tile next-fixture"><span class="eyebrow">${ct("FIXTURE", "경기")} ${Math.min(10, c.seasonMatch + 1)} / 10 · ${c.seasonMatch}/10 ${ct("completed", "완료")}</span><h2>${c.retired ? ct("Thank you, captain.", "수고했습니다, 주장.") : complete ? ct(`Season finished · ${rank} place`, `시즌 종료 · ${rank}위`) : `${escapeHTML(club.name)} <span>vs</span><br>${escapeHTML(opponent(c))}`}</h2><p>${role}</p>${!c.retired ? button("fixture", complete ? ct("START NEXT SEASON ↗", "다음 시즌 시작 ↗") : chosen.entryMinute !== null ? ct(chosen.entryMinute ? `NEXT MATCH · ENTER ${chosen.entryMinute}′ ↗` : "NEXT MATCH · START ↗", chosen.entryMinute ? `다음 경기 · ${chosen.entryMinute}분 투입 ↗` : "다음 경기 · 선발 ↗") : ct("ADVANCE · SIMULATE ↗", "진행 · 경기 시뮬레이션 ↗"), "primary") : ""}${!complete && !c.retired ? button("simulate", ct("SIMULATE FULL MATCH", "전체 경기 시뮬레이션"), "subtle") : ""}<p class="fine">${ct("A match lasts two active minutes. Bench entry fast-forwards the real match to your substitution.", "실제 경기 시간은 2분입니다. 교체 출전은 해당 투입 시점까지 실제 경기를 빠르게 시뮬레이션합니다.")}</p></article><article class="tile career-condition"><div><b>${ct("Trust", "감독 신뢰")} ${c.trust.toFixed(0)}</b><span>${ct("Form", "폼")} ${c.form.toFixed(0)}</span></div><div><b>${ct("Fitness", "체력")} ${c.fitness.toFixed(0)}</b><span>${ct("Sharpness", "실전감각")} ${c.sharpness.toFixed(0)}</span></div><small>${ct("Selection depends on club competition, trust, form, sharpness and fitness.", "출전은 구단 경쟁, 신뢰, 폼, 실전감각, 체력에 따라 달라집니다.")}</small></article><article class="tile progression"><span class="eyebrow">${ct("ONE OPTIONAL ACTIVITY", "경기 전 선택 활동 1회")}</span><div class="career-activities">${["pace", "shooting", "passing", "recovery"].map((kind) => `<button data-activity="${kind}" ${activityUsed || complete || c.retired || (c.injuryMatches > 0 && kind !== "recovery") ? "disabled" : ""}>${kind === "recovery" ? ct("Recover +10 fitness", "회복 · 체력 +10") : ct("Train " + kind, "훈련 · " + t(kind[0].toUpperCase() + kind.slice(1)))}</button>`).join("")}</div><p class="fine">${activityUsed ? ct("Activity completed for this fixture.", "이번 경기 활동을 마쳤습니다.") : ct("Training: +0.14 attribute, +2 trust, −5 fitness. Recovery: +10 fitness.", "훈련: 능력치 +0.14, 신뢰 +2, 체력 −5. 회복: 체력 +10.")}</p><h3>${ct("Development points", "성장 포인트")} ${c.points}</h3>${button("upgrades", ct("FOCUSED TRAINING ↗", "집중 훈련 ↗"))}<small>${c.xp} XP · ${ct("1 point = +0.4 attribute; potential limits growth.", "1점 = 능력치 +0.4. 잠재력이 성장을 제한합니다.")}</small></article>${c.event ? `<article class="tile career-event"><span class="eyebrow">${ct("MANAGER / CAREER EVENT", "감독 / 커리어 이벤트")}</span><h3>${events[c.event.type][0]}</h3><p>${events[c.event.type][1]}</p><div class="career-activities">${button("event-accept", ct("ACCEPT / TEAM FOCUS", "수락 / 팀에 집중"))}${button("event-alternative", ct("ALTERNATIVE / NEGOTIATE", "다른 선택 / 협상"), "subtle")}</div></article>` : ""}<div class="stat-strip">${[
+      [c.played, ct("APPS", "출전")],
+      [c.starts, ct("STARTS", "선발")],
+      [c.goals, t("YOUR GOALS")],
+      [c.assists, t("ASSISTS")],
+      [c.played ? (c.ratingTotal / c.played).toFixed(1) : "—", t("AVG RATING")],
+      [c.minutes, ct("MINUTES", "출전 시간")],
+    ]
+      .map(
+        ([value, label]) => `<div><b>${value}</b><span>${label}</span></div>`,
+      )
+      .join(
+        "",
+      )}</div><p class="fine">${ct("Season", "이번 시즌")} · ${c.seasonStats.appearances} ${ct("appearances", "출전")} · ${c.seasonStats.goals} ${ct("goals", "득점")} · ${c.seasonStats.assists} ${ct("assists", "도움")} · ${c.championships} ${ct("career titles", "통산 우승")}</p></div><div class="career-aside"><article class="tile league"><span class="eyebrow">${ct("TEN-MATCH MINI LEAGUE", "10경기 미니 리그")}</span><h3>${ct("Standings", "순위")}</h3><table><thead><tr><th>CLUB</th><th>P</th><th>GD</th><th>PTS</th></tr></thead><tbody>${table.map((r, i) => `<tr class="${r.name === club.name ? "your-club" : ""}"><td><small>${i + 1}</small>${escapeHTML(r.name)}</td><td>${r.played}</td><td>${r.gf - r.ga}</td><td><b>${r.points}</b></td></tr>`).join("")}</tbody></table><p class="fine">${ct("Each opponent twice. Win 3, draw 1. A compressed competition, not the official national season.", "상대마다 두 번. 승리 3점, 무승부 1점. 실제 정규 리그가 아닌 압축 대회입니다.")}</p></article><article class="tile career-contract"><span class="eyebrow">${ct("CONTRACT & TRANSFERS", "계약과 이적")}</span><p>${ct("Contract", "남은 계약")} ${c.contract.years} ${ct("seasons", "시즌")} · ${money(c.weeklySalary)} / ${ct("week", "주")}</p><p>${ct("Value", "시장 가치")} ${money(c.marketValue)} · ${ct("Reputation", "평판")} ${c.reputation.toFixed(0)}</p>${c.loan ? `<p>${ct("On loan from", "임대 원 소속")} ${escapeHTML(getClub(c.loan.parentClubId).name)}</p>` : ""}${c.pendingMove ? `<p>${ct("Next season move agreed:", "다음 시즌 이적 합의:")} ${escapeHTML(getClub(c.pendingMove.clubId).name)}</p>` : ""}${c.contract.years <= 1 && !c.retired ? button("renew", ct("RENEW CONTRACT", "계약 연장")) : ""}${c.offers.map((offer) => `<div class="career-offer"><b>${escapeHTML(getClub(offer.clubId).name)}</b><small>${offer.type === "loan" ? ct("Loan", "임대") : ct("Transfer", "이적")} · ${money(offer.salary)}/${ct("week", "주")} · ${offer.years}${ct("y", "년")}</small><p class="fine">${c.table.some((r) => r.name === getClub(offer.clubId).name) ? ct("Move now. Fixture count stays unchanged.", "즉시 이동. 시즌 경기 수는 유지됩니다.") : ct("Move at season end to preserve this competition.", "현재 대회를 마친 뒤 다음 시즌에 이동합니다.")}</p>${["standard", "salary", "role"].map((choice) => `<button data-offer="${offer.id}" data-deal="${choice}">${choice === "standard" ? ct("Accept", "수락") : choice === "salary" ? ct("Salary +10% / extra year", "급여 +10% / 계약 +1년") : ct("Starting chance / salary −10%", "선발 기회 / 급여 −10%")}</button>`).join("")}</div>`).join("") || `<p class="fine">${ct("Interest depends on performances, reputation and club strength. No guaranteed big-club offers.", "관심은 활약, 평판, 구단 전력에 달려 있습니다. 빅클럽 제안은 보장되지 않습니다.")}</p>`}</article><details class="tile career-history"><summary>${ct("News, history & records", "소식 · 이력 · 기록")}</summary>${c.news
+      .slice(0, 4)
+      .map(
+        (n) =>
+          `<p>${ct("S", "시즌")} ${n.season} / ${n.round} · ${newsText[n.text] || ct("Career decision recorded: ", "커리어 선택 기록: ") + escapeHTML(n.text)}</p>`,
+      )
+      .join(
+        "",
+      )}<h4>${ct("Club history", "구단 이력")}</h4>${c.clubHistory.map((h) => `<p>${escapeHTML(getClub(h.clubId).name)} · ${h.from}–${h.to || ct("now", "현재")} · ${h.appearances} ${ct("apps", "출전")} / ${h.goals} ${ct("goals", "득점")}</p>`).join("")}<p>${ct("Best overall / rating / goals in one match", "최고 종합 / 평점 / 한 경기 득점")} · ${c.records.bestOverall} / ${c.records.bestRating.toFixed(1)} / ${c.records.mostGoals}</p><p>${ct("Career earnings", "통산 수입")} ${money(c.earnings)}</p>${c.age >= 32 && !c.retired ? button("retire", ct("RETIRE PLAYER", "선수 은퇴"), "subtle") : ""}</details></div></div></section>`,
     true,
   );
   bind("back", goMain);
   bind("upgrades", upgradeMenu);
+  document.querySelectorAll("[data-activity]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        activity(c, b.dataset.activity);
+        persist();
+        careerMenu();
+      }),
+  );
   bind("fixture", () => {
     if (complete) {
-      nextSeason(career);
+      nextSeason(c);
       persist();
       careerMenu();
-    } else startMatch(true);
+    } else startMatch(true, chosen.entryMinute === null ? "simulate" : "play");
+  });
+  bind("simulate", () => startMatch(true, "simulate"));
+  for (const choice of ["accept", "alternative"])
+    bind("event-" + choice, () => {
+      respondEvent(c, choice);
+      persist();
+      careerMenu();
+    });
+  document.querySelectorAll("[data-offer]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        acceptOffer(c, b.dataset.offer, b.dataset.deal);
+        persist();
+        careerMenu();
+      }),
+  );
+  bind("renew", () => {
+    renewContract(c);
+    persist();
+    careerMenu();
+  });
+  bind("retire", () => {
+    retire(c);
+    persist();
+    careerMenu();
   });
 }
 function upgradeMenu() {
@@ -480,11 +651,11 @@ function upgradeMenu() {
     )
       .map(
         ([k, v]) =>
-          `<article class="upgrade-row"><div><h3>${k[0].toUpperCase() + k.slice(1)}</h3><small>${k === "pace" ? "Movement and sprint speed" : k === "shooting" ? "Shot speed and accuracy" : "Pass travel speed"}</small><div class="attribute-bar"><span style="width:${v}%"></span></div></div><b>${v}</b><button data-upgrade="${k}" ${career.points < 1 || v >= 99 ? "disabled" : ""}>${v >= 99 ? "MAX" : "+3 / 1 PT"}</button></article>`,
+          `<article class="upgrade-row"><div><h3>${k[0].toUpperCase() + k.slice(1)}</h3><small>${k === "pace" ? "Movement and sprint speed" : k === "shooting" ? "Shot speed and accuracy" : "Pass travel speed"}</small><div class="attribute-bar"><span style="width:${v}%"></span></div></div><b>${v.toFixed(1)}</b><button data-upgrade="${k}" ${career.points < 1 || v >= Math.min(99, career.potential + 4) || overall(career) >= career.potential || career.retired || career.seasonMatch >= 10 || career.activityFixture === fixtureId(career) ? "disabled" : ""}>${v >= Math.min(99, career.potential + 4) || overall(career) >= career.potential ? "MAX" : "+0.4 / 1 PT"}</button></article>`,
       )
       .join(
         "",
-      )}</div><p class="fine">Upgrades improve your own footballer in career matches. Attributes cap at 99.</p>${button("back", "← CAREER", "primary")}</section>`,
+      )}</div><p class="fine">Focused training develops only your player, +0.4 per point. Growth stops at potential; age can cause decline.</p>${button("back", "← CAREER", "primary")}</section>`,
   );
   document.querySelectorAll("[data-upgrade]").forEach((b) =>
     b.addEventListener("click", () => {
@@ -565,8 +736,9 @@ function settingsMenu(from) {
     });
   });
 }
-function startMatch(isCareer) {
-  if (isCareer && (!career || career.seasonMatch >= 5)) return careerMenu();
+function startMatch(isCareer, method = "play") {
+  if (isCareer && (!career || career.seasonMatch >= 10 || career.retired))
+    return careerMenu();
   careerMatch = isCareer;
   const home = getClub(isCareer ? career.clubId : settings.home);
   opponentName = isCareer ? opponent(career) : getClub(settings.away).name;
@@ -576,19 +748,48 @@ function startMatch(isCareer) {
   };
   match = new Match({
     attributes: isCareer
-      ? { ...career.attributes }
+      ? matchAttributes(career)
       : {
           pace: home.ratings.midfield * 0.78,
           shooting: home.ratings.attack,
           passing: home.ratings.midfield,
         },
     career: isCareer,
+    careerEntry: isCareer
+      ? selection(career).entryMinute === null
+        ? null
+        : (selection(career).entryMinute / 90) * 120
+      : 0,
+    initialFitness: isCareer ? career.fitness : 100,
     position: isCareer ? career.position : "Striker",
     skillId: isCareer ? career.skillId : undefined,
     teams: [home, away],
     difficulty: settings.difficulty,
     assisted: settings.controls === "balanced",
   });
+  careerFixtureId = isCareer ? fixtureId(career) : null;
+  careerSimulated = isCareer && method === "simulate";
+  if (isCareer) {
+    if (method === "simulate") {
+      mode = "simulating";
+      input.active = false;
+      shell(
+        `<section class="panel"><h2>${ct("Simulating the 6v6 match…", "6인제 경기를 시뮬레이션 중…")}</h2></section>`,
+      );
+      requestAnimationFrame(() => {
+        try {
+          simulateTo(match);
+          results();
+        } catch (error) {
+          toast(error.message);
+          careerMenu();
+        }
+      });
+      return;
+    }
+    if (match.careerEntry === null) return careerMenu();
+    if (!match.careerActive) simulateTo(match, match.careerEntry);
+  }
   const kits = selectKits(home, away);
   document.documentElement.style.setProperty(
     "--home-color",
@@ -605,7 +806,12 @@ function startMatch(isCareer) {
   input.reset();
   input.active = true;
   $("#away-label").textContent = abbreviation(opponentName);
-  announce("KICK OFF", "YOU ATTACK ↑");
+  announce(
+    isCareer && !match.careerStarted
+      ? ct("SUBSTITUTION", "교체 투입")
+      : "KICK OFF",
+    "YOU ATTACK ↑",
+  );
   updateHUD();
   unlockAudio();
   tone(850, 0.18);
@@ -718,23 +924,25 @@ function updateHUD() {
     `${match.players[match.controlled].stamina * 100}%`;
 }
 function results() {
+  if (mode === "results") return;
   mode = "results";
   input.active = false;
   input.reset();
   hud.hidden = true;
   let reward = null;
   if (careerMatch) {
-    reward = finishMatch(career, match.score, {
-      ...match.stats,
-      rating: match.rating(),
-    });
+    reward = finishMatch(
+      career,
+      match.score,
+      careerPerformance(match, careerFixtureId, careerSimulated),
+    );
     persist();
   }
   const [a, b] = match.score,
     title =
       a > b ? "Made it count." : a === b ? "Honours even." : "We go again.";
   shell(
-    `<section class="panel results-panel">${header("FULL TIME / FLOODLIGHT PARK", title)}<div class="result-score"><div><span class="club-badge">M</span><b>${escapeHTML(match.teams?.[0].name.toUpperCase() || "MINI FC")}</b></div><strong>${a}<span>:</span>${b}</strong><div><span class="club-badge rival">R</span><b>${escapeHTML(opponentName.toUpperCase())}</b></div></div><div class="stat-strip"><div><b>${match.stats.goals}</b><span>YOUR GOALS</span></div><div><b>${match.stats.shots}</b><span>YOUR SHOTS</span></div><div><b>${match.stats.completedPasses}/${match.stats.passes}</b><span>PASSES MADE</span></div><div><b>${match.stats.assists}</b><span>ASSISTS</span></div><div><b>${match.rating().toFixed(1)}</b><span>RATING</span></div></div>${reward ? `<div class="reward"><b>+${reward.xp} XP</b><span>+${reward.points} upgrade point${reward.points === 1 ? "" : "s"}${reward.champion ? " · LEAGUE CHAMPIONS!" : ""}</span></div>` : '<p class="fine">Take your game further. Start a career to earn XP and improve your squad.</p>'}${button("next", careerMatch ? "BACK TO CAREER ↗" : "PLAY AGAIN ↗", "primary")}${button("main", "MAIN MENU", "subtle")}</section>`,
+    `<section class="panel results-panel">${header("FULL TIME / FLOODLIGHT PARK", title)}<div class="result-score"><div><span class="club-badge">M</span><b>${escapeHTML(match.teams?.[0].name.toUpperCase() || "MINI FC")}</b></div><strong>${a}<span>:</span>${b}</strong><div><span class="club-badge rival">R</span><b>${escapeHTML(opponentName.toUpperCase())}</b></div></div><div class="stat-strip"><div><b>${match.stats.goals}</b><span>YOUR GOALS</span></div><div><b>${match.stats.shots}</b><span>YOUR SHOTS</span></div><div><b>${match.stats.completedPasses}/${match.stats.passes}</b><span>PASSES MADE</span></div><div><b>${match.stats.assists}</b><span>ASSISTS</span></div><div><b>${careerMatch && match.careerMinutes === 0 ? "—" : match.rating().toFixed(1)}</b><span>RATING</span></div></div>${reward ? `<div class="reward"><b>+${reward.xp} XP</b><span>+${reward.points} upgrade point${reward.points === 1 ? "" : "s"}${reward.champion ? " · LEAGUE CHAMPIONS!" : ""}</span></div>` : '<p class="fine">Take your game further. Start a career to earn XP and improve your squad.</p>'}${careerMatch && reward ? `<p class="career-consequences">${ct("Minutes / trust / fitness", "출전 시간 / 신뢰 변화 / 체력")} · ${reward.minutes} / ${reward.trustChange >= 0 ? "+" : ""}${reward.trustChange} / ${career.fitness.toFixed(0)}${reward.injured ? " · " + ct("Minor injury: one fixture absence", "가벼운 부상: 1경기 결장") : ""}</p>` : ""}${button("next", careerMatch ? "BACK TO CAREER ↗" : "PLAY AGAIN ↗", "primary")}${button("main", "MAIN MENU", "subtle")}</section>`,
   );
   tone(740, 0.25, "triangle");
   bind("next", careerMatch ? careerMenu : () => startMatch(false));

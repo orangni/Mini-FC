@@ -30,7 +30,7 @@ with sync_playwright() as p:
  assert 'outside' not in page.locator('#skill-preview p').inner_text()
  page.click('#create-career');expect(page.locator('.player-card h2')).to_have_text('PASS')
  assert page.evaluate('__miniFC.career.position')=='Midfielder';audit('career')
- page.click('#fixture');page.evaluate('__miniFC.match.ai=()=>{};__miniFC.match.kickoffWait=0')
+ page.evaluate('__miniFC.career.trust=90;__miniFC.career.sharpness=90;__miniFC.career.fitness=100;__miniFC.career.injuryMatches=0');page.click('#fixture');page.evaluate('__miniFC.match.ai=()=>{};__miniFC.match.kickoffWait=0')
  expect(page.locator('#pass-button')).to_contain_text('패스');expect(page.locator('#sprint-button')).to_have_text('질주')
  expect(page.locator('#signature-status')).to_contain_text('엘라스티코')
  page.click('#pause');page.click('#player-skills');audit('roster-ko');assert page.locator('[data-player-skill]').count()==12
@@ -42,11 +42,11 @@ with sync_playwright() as p:
  assert not page.evaluate('/[가-힣]/.test(document.querySelector(".skill-roster").textContent)')
  page.screenshot(path=str(ARTIFACTS/'english-roster.png'))
  page.click('#back');page.click('#settings');page.select_option('#language','ko');page.click('#back');page.click('#resume')
- page.evaluate('__miniFC.match.score=[1,0];__miniFC.match.elapsed=119.99');page.wait_for_function('__miniFC.mode==="results"');audit('results')
+ page.evaluate('__miniFC.match.score=[1,0];__miniFC.match.careerMinutes=90;__miniFC.match.elapsed=119.99');page.wait_for_function('__miniFC.mode==="results"');audit('results')
  expect(page.locator('#next')).to_contain_text('커리어로');page.click('#next');page.click('#upgrades');audit('upgrades');page.click('[data-upgrade="pace"]')
- assert page.evaluate('__miniFC.career.attributes.pace')==63
+ assert 60.4 <= page.evaluate('__miniFC.career.attributes.pace') < 61
  page.reload();assert page.evaluate('__miniFC.settings.language')=='ko';page.click('#career')
- assert page.evaluate('__miniFC.career.skillId==="elastico" && __miniFC.career.attributes.pace===63 && __miniFC.career.played===1')
+ assert page.evaluate('__miniFC.career.skillId==="elastico" && __miniFC.career.attributes.pace>=60.4 && __miniFC.career.attributes.pace<61 && __miniFC.career.played===1')
  page.click('#back');page.click('#settings');page.select_option('#language','en');page.reload();assert page.evaluate('__miniFC.settings.language')=='en'
  page.click('#career');expect(page.locator('.career-signature b')).to_have_text('Elastico');assert not page.evaluate('/[가-힣]/.test(document.querySelector("#screen").textContent)')
  assert not untranslated,untranslated

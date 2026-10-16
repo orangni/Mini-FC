@@ -64,12 +64,20 @@ export class Match {
     difficulty = "normal",
     assisted = false,
     skillId = "body-feint",
+    careerEntry = 0,
+    initialFitness = 100,
   } = {}) {
     this.attributes = attributes;
     this.random = random;
     this.demo = demo;
     this.assisted = assisted;
     this.career = career;
+    this.careerEntry = careerEntry;
+    this.careerActive = !career || careerEntry === 0;
+    this.careerStarted = career && careerEntry === 0;
+    this.careerMinutes = 0;
+    this.initialFitness = Math.max(40, Math.min(100, initialFitness));
+    this.autoUser = false;
     this.position = position;
     this.teams = teams;
     this.difficulty = DIFFICULTIES[difficulty] ? difficulty : "normal";
@@ -175,6 +183,7 @@ export class Match {
     this.queuedAction = null;
     this.manualSwitchTime = 0;
     this.kickoff(0);
+    if (career) this.players[0].stamina = this.initialFitness / 100;
   }
   kickoff(team) {
     for (const p of this.players) {
@@ -252,14 +261,29 @@ export class Match {
   set controlled(id) {
     this._controlled = this.career ? 0 : id;
   }
+  enterCareer() {
+    if (!this.career || this.careerActive || this.finished) return false;
+    this.careerActive = true;
+    this.players[0].stamina = this.initialFitness / 100;
+    this.events.push({
+      type: "substitution",
+      minute: Math.round((this.elapsed / 120) * 90),
+    });
+    return true;
+  }
   takeEvents() {
     return this.events.splice(0);
   }
   isUser(p) {
-    return !this.demo && p.team === 0 && (!this.career || p.id === 0);
+    return (
+      !this.demo &&
+      p.team === 0 &&
+      (!this.career || (p.id === 0 && this.careerActive))
+    );
   }
   attributesFor(p) {
-    if (p.team === 0 && (!this.career || p.id === 0)) return this.attributes;
+    if (p.team === 0 && (!this.career || (p.id === 0 && this.careerActive)))
+      return this.attributes;
     const r = this.teams?.[p.team]?.ratings;
     return r
       ? { pace: 45 + r.midfield * 0.3, passing: r.midfield, shooting: r.attack }
@@ -538,7 +562,10 @@ export class Match {
     );
     b.curve = curve;
     b.shotId = ++this.shotSerial;
-    b.userShot = user && p.team === 0 && (!this.career || id === 0);
+    b.userShot =
+      (user || (this.autoUser && this.isUser(p))) &&
+      p.team === 0 &&
+      (!this.career || id === 0);
     p.action = "shot";
     p.actionTime = 0.5;
     this.pendingPass = null;
@@ -1294,6 +1321,7 @@ export class Match {
   }
   // Allow an early tap just before receiving a pass, without repeating it on later players.
   queueAction(input, dt) {
+    if (this.career && !this.careerActive) return;
     if (this.queuedAction && (this.queuedAction.time -= dt) <= 0)
       this.queuedAction = null;
     const action = [
@@ -1314,6 +1342,7 @@ export class Match {
       };
   }
   tryQueuedAction() {
+    if (this.career && !this.careerActive) return;
     const command = this.queuedAction;
     if (!command) return;
     const { action, id, input } = command;
@@ -1364,6 +1393,15 @@ export class Match {
       this.events.push({ type: "fulltime" });
       return;
     }
+    if (
+      this.career &&
+      !this.careerActive &&
+      this.careerEntry !== null &&
+      this.elapsed >= this.careerEntry
+    )
+      this.enterCareer();
+    if (this.career && this.careerActive)
+      this.careerMinutes = Math.min(90, this.careerMinutes + (dt * 90) / 120);
     const b = this.ball;
     for (const p of this.players) {
       p.previousX = p.x;
@@ -1383,7 +1421,7 @@ export class Match {
       distance(this.players[this.controlled], b) > 8
     )
       this.switchPlayer();
-    this.pressing = !!input.press;
+    this.pressing = !!input.press && (!this.career || this.careerActive);
     b.ignoreTime = Math.max(0, b.ignoreTime - dt);
     if (this.pendingPass && (this.pendingPass.time -= dt) <= 0)
       this.pendingPass = null;
@@ -1414,7 +1452,12 @@ export class Match {
       }
       p.shield = p.id === this.controlled && !!input.shield;
       p.charging = p.id === this.controlled ? input.charge || 0 : 0;
-      if (p.id === this.controlled && !this.demo) {
+      if (
+        p.id === this.controlled &&
+        !this.demo &&
+        (!this.career || this.careerActive) &&
+        !this.autoUser
+      ) {
         p.aiShot = null;
         if (
           this.pendingPass?.receiver === p.id &&
@@ -1448,7 +1491,7 @@ export class Match {
           );
       } else this.ai(p, dt);
     }
-    if (!this.demo) {
+    if (!this.demo && (!this.career || this.careerActive) && !this.autoUser) {
       if (input.switch) this.switchPlayer();
       this.tryQueuedAction();
       if (input.tackle) this.tackle(this.controlled);

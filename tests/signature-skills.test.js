@@ -86,7 +86,7 @@ test("career can select every outfield skill regardless of position, without aff
 test("selected signature survives rewards, upgrades, next season and storage", () => {
   const c = newCareer("Spinner", "Midfielder", "arsenal", "roulette"),
     s = memory();
-  for (let i = 0; i < 5; i++) finishMatch(c, [3, 0], { goals: 1 }, () => 0.5);
+  for (let i = 0; i < 10; i++) finishMatch(c, [3, 0], { goals: 1 }, () => 0.5);
   upgrade(c, "pace");
   nextSeason(c);
   saveCareer(s, c);
