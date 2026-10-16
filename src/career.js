@@ -1,4 +1,5 @@
 import { getClub, CLUB_DATABASE } from "./clubs.js";
+import { outfieldSkill } from "./skills.js";
 export const SAVE_KEY = "mini-fc-career-v1";
 export const CLUBS = [
   "Mini FC",
@@ -8,9 +9,15 @@ export const CLUBS = [
   "Metro Rovers",
   "Coast City",
 ];
-export function newCareer(name, position, clubId = "mini-fc") {
+export function newCareer(
+  name,
+  position,
+  clubId = "mini-fc",
+  skillId = "body-feint",
+) {
   return {
     version: 2,
+    skillId: outfieldSkill(skillId).id,
     clubId: getClub(clubId).id,
     assists: 0,
     ratingTotal: 0,
@@ -271,6 +278,7 @@ export function loadCareer(storage) {
     )
       return null;
     if (new Set(c.table.map((r) => r.name)).size !== 6) return null;
+    c.skillId = outfieldSkill(c.skillId).id;
     return c;
   } catch {
     return null;

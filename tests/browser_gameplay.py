@@ -6,7 +6,7 @@ URL=os.environ.get('MINI_FC_URL','http://127.0.0.1:4180/Mini-FC/')
 ARTIFACTS=Path(os.environ.get('MINI_FC_ARTIFACTS','playwright-results'));ARTIFACTS.mkdir(parents=True,exist_ok=True)
 PREPARE="""() => {
  const m=__miniFC.match;m.kickoffWait=0;m.ai=()=>{};m.queuedAction=null;m.pendingPass=null;m.random=()=>.5;
- m.players.forEach((p,i)=>Object.assign(p,{x:p.team?20:-20,z:20+i*.4,vx:0,vz:0,cooldown:0,protected:0,stunned:0,feintTime:0,skillCooldown:0,tackleCooldown:0,action:'',actionTime:0}));
+ m.players.forEach((p,i)=>Object.assign(p,{x:p.team?20:-20,z:20+i*.4,vx:0,vz:0,cooldown:0,protected:0,stunned:0,feintTime:0,skillTime:0,skillCooldown:0,tackleCooldown:0,action:'',actionTime:0}));
  Object.assign(m.players[0],{x:0,z:-18,dx:0,dz:-1});
  Object.assign(m.players[1],{x:-12,z:-23});Object.assign(m.players[2],{x:12,z:-23});
  Object.assign(m.ball,{owner:0,followOwner:null,x:0,z:-18.75,y:.35,vx:0,vz:0,vy:0});m.controlled=0;

@@ -28,7 +28,7 @@ with sync_playwright() as p:
   page.evaluate(SHOT)
   page.evaluate("""() => {
     const m=__miniFC.match;m.ai=()=>{};m.random=()=>.5;m.testLastShot=null;m.testLastPass=null;
-    m.players[0].skillCooldown=0;m.players[0].stunned=0;
+    m.players[0].skillCooldown=0;m.players[0].skillTime=0;m.players[0].feintTime=0;m.players[0].stunned=0;
     if(!m.testSpies){
       const shoot=m.shoot.bind(m),pass=m.pass.bind(m);
       m.shoot=(id,user,options={})=>{const ok=shoot(id,user,options);if(ok)m.testLastShot={type:options.type||'normal',vy:m.ball.vy,curve:m.ball.curve,speed:Math.hypot(m.ball.vx,m.ball.vz)};return ok;};

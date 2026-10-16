@@ -1865,3 +1865,84 @@ button[hidden] {
     margin-bottom: 8px;
   }
 }
+
+.signature-card {
+  padding: 14px;
+  margin: 10px 0 16px;
+  border: 1px solid #8af2d044;
+  border-radius: 12px;
+  background: #8af2d00a;
+  text-align: left;
+}
+.signature-card b,
+.signature-card small {
+  display: block;
+}
+.signature-card b {
+  color: #8af2d0;
+  font-size: 14px;
+}
+.signature-card p {
+  font-size: 12px;
+  line-height: 1.6;
+  margin: 8px 0;
+  color: #c5d5d8;
+}
+.signature-card small {
+  color: #b2c8cc;
+  font-size: 10px;
+  line-height: 1.6;
+}
+.career-signature {
+  margin: 14px 0 0;
+  padding: 12px;
+}
+.skill-roster {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.skill-roster .signature-card {
+  margin: 0;
+}
+.skills-panel {
+  width: min(780px, 100%);
+}
+.skills-panel > h3 {
+  margin: 22px 0 10px;
+}
+.skills-panel > button {
+  margin-top: 20px;
+}
+#signature-status {
+  color: #8af2d0;
+  max-width: 330px;
+  font-size: 10px;
+  line-height: 1.5;
+}
+#touch-controls #skill-button.cooling {
+  border-color: #e8b775;
+  color: #e8b775;
+}
+#touch-controls #skill-button small {
+  font-size: 8px;
+  padding: 0 4px;
+}
+@media (max-width: 600px) {
+  .skill-roster {
+    grid-template-columns: 1fr;
+  }
+  #signature-status {
+    max-width: 230px;
+    font-size: 9px;
+  }
+}
+.career-signature {
+  width: 100%;
+  position: relative;
+  background: #173b37;
+}
+.creation,
+.skills-panel {
+  margin-block: auto;
+}

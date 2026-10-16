@@ -506,6 +506,7 @@ export class Renderer {
       m.body.rotation.y = Math.atan2(p.dx, p.dz);
       m.phase += dt * p.moving * 1.8;
       const swing = Math.sin(m.phase) * Math.min(p.moving / 12, 0.8);
+      m.legs[0].rotation.z = m.legs[1].rotation.z = 0;
       m.legs[0].rotation.x = swing;
       m.legs[1].rotation.x = -swing;
       m.arms[0].rotation.x = -swing * 0.7;
@@ -540,8 +541,45 @@ export class Renderer {
       }
       if (p.action === "catch")
         m.arms[0].rotation.x = m.arms[1].rotation.x = -1.1;
-      if (p.action === "feint")
-        m.body.rotation.z = Math.sin(p.actionTime * 15) * 0.35;
+      if (
+        p.action === "feint" &&
+        p.skillTime > 0 &&
+        match.ball.owner === p.id
+      ) {
+        const t = 1 - p.skillTime / p.skillDuration,
+          wave = Math.sin(t * Math.PI);
+        const base = Math.atan2(p.skillForwardX, p.skillForwardZ);
+        switch (p.skillId) {
+          case "step-over":
+            m.legs[0].rotation.z = Math.sin(t * Math.PI * 4) * 0.65;
+            m.legs[1].rotation.z = -m.legs[0].rotation.z;
+            m.body.rotation.z = wave * p.skillSide * 0.18;
+            break;
+          case "roulette":
+            m.body.rotation.y = base + p.skillSide * t * Math.PI * 2;
+            m.body.rotation.z = wave * p.skillSide * 0.25;
+            m.arms[0].rotation.z = -0.55;
+            break;
+          case "double-touch":
+            m.legs[0].rotation.z = Math.sin(t * Math.PI * 2) * 0.55;
+            m.legs[1].rotation.z = -m.legs[0].rotation.z;
+            m.body.rotation.z = Math.sin(t * Math.PI * 2) * p.skillSide * 0.3;
+            break;
+          case "heel-burst":
+            m.legs[0].rotation.x = Math.sin(t * Math.PI * 2) * 1.1;
+            m.legs[1].rotation.x = -m.legs[0].rotation.x;
+            m.body.rotation.x = t < 0.28 ? -0.2 : 0.25;
+            break;
+          case "drag-back":
+            m.legs[1].rotation.x = -wave * 0.9;
+            m.body.rotation.y =
+              base + p.skillSide * Math.max(0, t - 0.55) * 1.5;
+            m.body.position.y -= wave * 0.1;
+            break;
+          default:
+            m.body.rotation.z = wave * p.skillSide * 0.35;
+        }
+      }
       if (p.shield) {
         m.arms[0].rotation.z = -0.7;
         m.arms[1].rotation.z = 0.7;

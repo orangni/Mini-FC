@@ -1,5 +1,7 @@
 # Gameplay overhaul
 
+Current signature skills: every footballer has one stable innate skill, with six distinct outfield movement/ball/animation profiles and two automatic keeper traits. Career creation chooses the captain’s signature; existing saves default to Body feint while retaining progress. C / tap SKILL uses it, holding still shields, HUD shows cooldown and Pause → Player Skills lists both teams. AI uses its own move only when a close frontal challenge leaves no clear passing option, with longer cooldowns. Ten simulation regressions and `browser_signatures.py` check trajectories, animation, assignment, selection, persistence, controls and keeper effects. See the README for the full move list. The historical balance measurements below predate signatures.
+
 Current controls: **Balanced** is the default, with all techniques visible on keyboard and touch. Normal/charged/chip/finesse shots, short/through/lob passes, body feints, shielding, tackles and slides remain available without selecting another mode. Previous Simple settings migrate to Balanced without modifying career data. Manual keeps the heavier original movement and full directional aim. The following changes aim for slightly easier play while keeping technique and timing relevant:
 
 - Movement retains velocity and sprint turning cost, with faster braking and closer touches than Manual. The previous Simple assistance is moderated: assisted sprint multiplier 1.42, braking 100, facing rate 18 and dribble orbit rate 14. First-touch and stamina/attribute mechanics remain.
@@ -10,7 +12,7 @@ Current controls: **Balanced** is the default, with all techniques visible on ke
 
 The historical AI balance figures below describe the original overhaul, before this small Normal tuning. They do not measure human difficulty or iPad performance.
 
-Follow-up camera/control change: live matches now use a close, ball-centered view (landscape height 33, portrait 40), replacing the off-ball captain framing described below. Career control is enforced before movement and always stays on the created player. Kick Off defensive selection is manual, with a 500ms SWITCH repeat guard. The current suite has 88 tests; the balance results below describe the original overhaul checkpoint.
+Follow-up camera/control change: live matches now use a close, ball-centered view (landscape height 33, portrait 40), replacing the off-ball captain framing described below. Career control is enforced before movement and always stays on the created player. Kick Off defensive selection is manual, with a 500ms SWITCH repeat guard. The current suite has 98 tests; the balance results below describe the original overhaul checkpoint.
 
 The overhaul improves the existing 6v6 game rather than rebuilding its menus, assets or career system. The 120-second clock, goalkeeper immunity, 70 clubs, kits, v1/v2 save compatibility and large touch controls remain supported.
 

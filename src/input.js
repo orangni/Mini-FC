@@ -195,8 +195,10 @@ export class Input {
           action === "skill" &&
           elapsed < 350 &&
           Math.hypot(e.clientX - hold.x, e.clientY - hold.y) < 22
-        )
+        ) {
           this.actions.skill = true;
+          this.actions.aimDirection = this.actionAim(hold.aim);
+        }
       };
       button.addEventListener("pointerup", (e) => end(e));
       for (const event of ["pointercancel", "lostpointercapture"])

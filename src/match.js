@@ -1,3 +1,4 @@
+import { assignedSkill, outfieldSkill, signatureMotion } from "./skills.js";
 // Stable original player IDs keep saved/debug integrations compatible; six per side.
 export const TEAM_IDS = [
   [0, 1, 2, 6, 7, 8],
@@ -62,6 +63,7 @@ export class Match {
     teams = null,
     difficulty = "normal",
     assisted = false,
+    skillId = "body-feint",
   } = {}) {
     this.attributes = attributes;
     this.random = random;
@@ -82,6 +84,15 @@ export class Match {
         id,
         team,
         slot,
+        skillId: assignedSkill(
+          teams?.[team]?.id || (team ? "rival-fc" : "mini-fc"),
+          slot,
+        ),
+        skillTime: 0,
+        skillDuration: 0,
+        skillSide: 1,
+        skillForwardX: 0,
+        skillForwardZ: dirFor(team),
         role:
           slot === 5
             ? "goalkeeper"
@@ -122,6 +133,7 @@ export class Match {
       };
     });
     if (career) {
+      this.players[0].skillId = outfieldSkill(skillId).id;
       const slot =
         position === "Defender" ? 3 : position === "Midfielder" ? 1 : 0;
       const other = this.players[TEAM_IDS[0][slot]];
@@ -178,6 +190,7 @@ export class Match {
         possessionTime: 0,
         recovery: 0,
         feintTime: 0,
+        skillTime: 0,
         aiShot: null,
         tackleCooldown: 0,
         keeperSeenShot: this.shotSerial,
@@ -527,19 +540,33 @@ export class Match {
     const p = this.players[id];
     if (!this.canKick(id) || p.skillCooldown > 0 || p.role === "goalkeeper")
       return false;
+    if (p.stamina < 0.08 || p.stunned > 0 || p.recovery > 0) return false;
+    const signature = outfieldSkill(p.skillId);
     const side = lateral < 0 ? -1 : 1;
-    p.feintTime = 0.22;
-    p.feintX = p.dz * side;
-    p.feintZ = -p.dx * side;
-    p.vx += p.feintX * 5.5;
-    p.vz += p.feintZ * 5.5;
-    p.protected = 0.48 + this.attributesFor(p).passing * 0.002;
-    p.skillCooldown = 2.5;
+    p.skillTime = p.feintTime = p.skillDuration = signature.duration;
+    p.skillSide = side;
+    p.skillForwardX = p.dx;
+    p.skillForwardZ = p.dz;
+    const motion = signatureMotion(p.skillId, 0);
+    p.vx += (p.dx * motion.forward + p.dz * side * motion.side) * 6.2;
+    p.vz += (p.dz * motion.forward - p.dx * side * motion.side) * 6.2;
+    p.protected = Math.max(
+      p.protected,
+      0.45 + this.attributesFor(p).passing * 0.0015,
+    );
+    p.stamina = Math.max(0, p.stamina - 0.08);
+    p.skillCooldown = signature.cooldown + (this.isUser(p) ? 0 : 2);
     p.action = "feint";
-    p.actionTime = 0.5;
+    p.actionTime = signature.duration;
     for (const q of this.players)
-      if (q.team !== p.team && distance(p, q) < 2.8) q.stunned = 0.22;
-    this.events.push({ type: "skill" });
+      if (q.team !== p.team && q.role !== "goalkeeper" && distance(p, q) < 2.8)
+        q.stunned = Math.max(q.stunned, this.isUser(p) ? 0.18 : 0.1);
+    this.events.push({
+      type: "skill",
+      player: id,
+      team: p.team,
+      skillId: signature.id,
+    });
     return true;
   }
   tackle(id = this.controlled, slide = false, automatic = false) {
@@ -638,9 +665,19 @@ export class Match {
   move(p, x, z, sprint, dt) {
     const pace = this.attributesFor(p).pace;
     const assist = this.assisted && !this.demo && p.id === this.controlled;
-    if (p.feintTime > 0) {
-      x += p.feintX * 0.85;
-      z += p.feintZ * 0.85;
+    if (p.skillTime > 0 && this.ball.owner === p.id) {
+      const motion = signatureMotion(
+        p.skillId,
+        1 - p.skillTime / p.skillDuration,
+      );
+      x =
+        x * 0.35 +
+        p.skillForwardX * motion.forward +
+        p.skillForwardZ * p.skillSide * motion.side;
+      z =
+        z * 0.35 +
+        p.skillForwardZ * motion.forward -
+        p.skillForwardX * p.skillSide * motion.side;
     }
     let mag = Math.hypot(x, z);
     if (p.stunned > 0) {
@@ -716,7 +753,16 @@ export class Match {
       b.vx = b.vz = b.vy = b.curve = 0;
       return;
     }
-    const heading = Math.atan2(p.dx, p.dz);
+    let heading = Math.atan2(p.dx, p.dz);
+    if (p.skillTime > 0) {
+      const motion = signatureMotion(
+        p.skillId,
+        1 - p.skillTime / p.skillDuration,
+      );
+      heading =
+        Math.atan2(p.skillForwardX, p.skillForwardZ) +
+        motion.ball * p.skillSide;
+    }
     if (b.followOwner !== p.id) {
       b.followOwner = p.id;
       b.orbit =
@@ -784,6 +830,9 @@ export class Match {
     }
     return { x, z, y: Math.max(0.35, b.y + b.vy * time - 6 * time * time) };
   }
+  keeperHoldLimit(p) {
+    return p.skillId === "quick-release" ? 0.75 : 0.85;
+  }
   goalkeeper(p, dt) {
     const b = this.ball,
       dir = dirFor(p.team),
@@ -791,7 +840,7 @@ export class Match {
     if (b.owner === p.id) {
       p.holdTime += dt;
       this.move(p, 0, 0, false, dt);
-      if (p.holdTime > 0.85) {
+      if (p.holdTime > this.keeperHoldLimit(p)) {
         const target = this.passTarget(p);
         this.pass(
           p.id,
@@ -885,7 +934,10 @@ export class Match {
         if (!inBox || gap > reach || b.y > (diving ? 2.65 : 1.9)) continue;
         // Fast shots outside the keeper's planted reach beat a late stretch, deterministically.
         if (speed > 35 && Math.abs(b.x - p.x) > reach * 0.78) continue;
-        const catchBall = b.y < 1.8 && speed < 24 && gap < 1.4;
+        const catchBall =
+          b.y < 1.8 &&
+          speed < (p.skillId === "safe-hands" ? 25 : 24) &&
+          gap < 1.4;
         this.stats.saves[p.team]++;
         this.assistCandidate = this.pendingPass = null;
         p.action = catchBall ? "catch" : "dive";
@@ -976,6 +1028,21 @@ export class Match {
       );
       const openLane = this.laneRisk(p, safe) < 2.3;
       const pressed = distance(p, threat) < 4.5;
+      const threatGap = distance(p, threat);
+      if (
+        p.skillCooldown <= 0 &&
+        p.possessionTime > 0.7 &&
+        p.protected <= 0 &&
+        goalDistance > 12 &&
+        threatGap > 1.35 &&
+        threatGap < 2.6 &&
+        (!openLane || safeSpace < 2.2) &&
+        (threat.x - p.x) * p.dx + (threat.z - p.z) * p.dz > 0
+      ) {
+        const side = (p.x - threat.x) * p.dz - (p.z - threat.z) * p.dx;
+        if (this.skill(p.id, side < 0 ? -1 : 1))
+          return { x: p.x + p.dx * 3, z: p.z + p.dz * 3 };
+      }
       if (p.cooldown <= 0 && p.possessionTime > 0.28) {
         const clearShot = this.laneRisk(p, { x: 0, z: dir * 35 }) < 1.5;
         if (
@@ -1085,6 +1152,10 @@ export class Match {
   }
   ai(p, dt) {
     if (p.role === "goalkeeper") return this.goalkeeper(p, dt);
+    if (p.skillTime > 0 && this.ball.owner === p.id) {
+      this.move(p, 0, 0, false, dt);
+      return;
+    }
     if (p.aiShot && this.ball.owner === p.id) {
       p.aiShot.remaining -= dt;
       p.charging = (1 - p.aiShot.remaining / p.aiShot.total) * 0.8;
@@ -1213,7 +1284,8 @@ export class Match {
         owner.team === 0 &&
         owner.id !== 0 &&
         owner.cooldown <= 0 &&
-        (owner.role !== "goalkeeper" || owner.holdTime >= 0.85)
+        (owner.role !== "goalkeeper" ||
+          owner.holdTime >= this.keeperHoldLimit(owner))
       )
         success = this.pass(owner.id, "short", 0);
     }
@@ -1225,7 +1297,8 @@ export class Match {
           null,
           input.aimDirection || { x: input.x || 0, z: input.z || 0 },
         );
-      else if (action === "skill") success = this.skill(id, input.x);
+      else if (action === "skill")
+        success = this.skill(id, input.aimDirection?.x ?? input.x);
       else
         success = this.shoot(id, true, {
           type: action === "shoot" ? input.shotType || "normal" : action,
@@ -1283,6 +1356,7 @@ export class Match {
         "cooldown",
         "actionTime",
         "skillCooldown",
+        "skillTime",
         "tackleCooldown",
         "protected",
         "slideTime",
@@ -1295,6 +1369,9 @@ export class Match {
       ])
         p[key] = Math.max(0, p[key] - dt);
       if (p.actionTime === 0) p.action = "";
+      if (b.owner !== p.id || p.stunned > 0 || p.slideTime > 0) {
+        p.skillTime = p.feintTime = 0;
+      }
       p.shield = p.id === this.controlled && !!input.shield;
       p.charging = p.id === this.controlled ? input.charge || 0 : 0;
       if (p.id === this.controlled && !this.demo) {
